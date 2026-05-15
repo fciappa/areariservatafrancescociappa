@@ -1,4 +1,4 @@
--- ============================================================
+﻿-- ============================================================
 --  Area Riservata - Francesco Ciappa
 --  Database Schema - MySQL 8+
 --  Tecnologie: Vue 3 + Vite + MySQL | Auth: JWT
@@ -20,16 +20,16 @@
 --  Sostituisci CAMBIA_QUESTO_HASH con il valore ottenuto.
 -- ============================================================
 
-CREATE DATABASE IF NOT EXISTS areariservatafc_db
-  CHARACTER SET utf8mb4
-  COLLATE utf8mb4_unicode_ci;
+-- CREATE DATABASE IF NOT EXISTS areariservatafc_db
+--   CHARACTER SET utf8mb4
+--   COLLATE utf8mb4_unicode_ci;
 
-USE areariservatafc_db;
+-- USE areariservatafc_db;
 
 -- -----------------------------------------------------------
 -- COLLABORATORI
 -- -----------------------------------------------------------
-CREATE TABLE collaborators (
+CREATE TABLE IF NOT EXISTS collaborators (
     id           INT UNSIGNED     AUTO_INCREMENT PRIMARY KEY,
     first_name   VARCHAR(100)     NOT NULL,
     last_name    VARCHAR(100)     NOT NULL,
@@ -45,7 +45,7 @@ CREATE TABLE collaborators (
 -- -----------------------------------------------------------
 -- UTENTI  (admin + account collaboratore)
 -- -----------------------------------------------------------
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
     id               INT UNSIGNED    AUTO_INCREMENT PRIMARY KEY,
     username         VARCHAR(100)    NOT NULL UNIQUE,
     email            VARCHAR(255)    NOT NULL UNIQUE,
@@ -63,7 +63,7 @@ CREATE TABLE users (
 -- -----------------------------------------------------------
 -- CLIENTI
 -- -----------------------------------------------------------
-CREATE TABLE clients (
+CREATE TABLE IF NOT EXISTS clients (
     id            INT UNSIGNED    AUTO_INCREMENT PRIMARY KEY,
     company_name  VARCHAR(255)    NOT NULL,
     vat_number    VARCHAR(20)     NOT NULL UNIQUE  COMMENT 'Partita IVA',
@@ -82,7 +82,7 @@ CREATE TABLE clients (
 -- -----------------------------------------------------------
 -- PROGETTI
 -- -----------------------------------------------------------
-CREATE TABLE projects (
+CREATE TABLE IF NOT EXISTS projects (
     id           INT UNSIGNED     AUTO_INCREMENT PRIMARY KEY,
     client_id    INT UNSIGNED     NOT NULL,
     name         VARCHAR(255)     NOT NULL,
@@ -100,10 +100,11 @@ CREATE TABLE projects (
 -- -----------------------------------------------------------
 -- TARIFFARIO
 -- -----------------------------------------------------------
-CREATE TABLE tariffs (
+CREATE TABLE IF NOT EXISTS tariffs (
     id             INT UNSIGNED    AUTO_INCREMENT PRIMARY KEY,
     name           VARCHAR(150)    NOT NULL,
-    hourly_rate    DECIMAL(10,2)   NOT NULL            COMMENT 'Tariffa oraria in EUR',
+    rate_type      ENUM('hourly','daily') NOT NULL DEFAULT 'hourly' COMMENT 'hourly = €/ora; daily = €/giorno (8h)',
+    hourly_rate    DECIMAL(10,2)   NOT NULL            COMMENT 'Se hourly: €/ora. Se daily: €/giorno (1 giorno = 8 ore)',
     valid_from     DATE            NOT NULL,
     valid_to       DATE            NULL                COMMENT 'NULL = nessuna scadenza',
     is_default     BOOLEAN         NOT NULL DEFAULT FALSE COMMENT 'Tariffa proposta di default (fallback globale)',
@@ -121,7 +122,7 @@ CREATE TABLE tariffs (
 --   2. Se non trovata, cerca (project_id, NULL) → tariffa di default per il progetto
 --   3. Se non trovata, usa la tariffa con is_default = TRUE (fallback globale)
 -- -----------------------------------------------------------
-CREATE TABLE tariff_assignments (
+CREATE TABLE IF NOT EXISTS tariff_assignments (
     id               INT UNSIGNED    AUTO_INCREMENT PRIMARY KEY,
     tariff_id        INT UNSIGNED    NOT NULL,
     project_id       INT UNSIGNED    NOT NULL,
@@ -136,7 +137,7 @@ CREATE TABLE tariff_assignments (
 -- -----------------------------------------------------------
 -- ORE DEI COLLABORATORI (lavorate per me)
 -- -----------------------------------------------------------
-CREATE TABLE collaborator_hours (
+CREATE TABLE IF NOT EXISTS collaborator_hours (
     id               INT UNSIGNED    AUTO_INCREMENT PRIMARY KEY,
     collaborator_id  INT UNSIGNED    NOT NULL,
     project_id       INT UNSIGNED    NULL  COMMENT 'Progetto di riferimento',
@@ -154,7 +155,7 @@ CREATE TABLE collaborator_hours (
 -- -----------------------------------------------------------
 -- ORE MIE (lavorate per un cliente, riferite a un progetto)
 -- -----------------------------------------------------------
-CREATE TABLE my_work_hours (
+CREATE TABLE IF NOT EXISTS my_work_hours (
     id           INT UNSIGNED    AUTO_INCREMENT PRIMARY KEY,
     client_id    INT UNSIGNED    NOT NULL,
     project_id   INT UNSIGNED    NULL  COMMENT 'Progetto di riferimento',
@@ -172,7 +173,7 @@ CREATE TABLE my_work_hours (
 -- -----------------------------------------------------------
 -- FATTURE (simulate)
 -- -----------------------------------------------------------
-CREATE TABLE invoices (
+CREATE TABLE IF NOT EXISTS invoices (
     id              INT UNSIGNED    AUTO_INCREMENT PRIMARY KEY,
     invoice_number  VARCHAR(50)     NOT NULL UNIQUE         COMMENT 'Es. 2024/001',
     client_id       INT UNSIGNED    NOT NULL,
@@ -195,7 +196,7 @@ CREATE TABLE invoices (
 --    tax_inclusive = TRUE  → imponibile = line_total / 1.04  |  tax = line_total - imponibile
 --    tax_inclusive = FALSE → imponibile = hourly_rate * hours |  tax = imponibile * 0.04
 -- -----------------------------------------------------------
-CREATE TABLE invoice_items (
+CREATE TABLE IF NOT EXISTS invoice_items (
     id             INT UNSIGNED    AUTO_INCREMENT PRIMARY KEY,
     invoice_id     INT UNSIGNED    NOT NULL,
     work_hour_id   INT UNSIGNED    NULL   COMMENT 'Ref a my_work_hours (opzionale)',
@@ -214,7 +215,7 @@ CREATE TABLE invoice_items (
 -- -----------------------------------------------------------
 -- REFRESH TOKEN JWT
 -- -----------------------------------------------------------
-CREATE TABLE refresh_tokens (
+CREATE TABLE IF NOT EXISTS refresh_tokens (
     id          INT UNSIGNED    AUTO_INCREMENT PRIMARY KEY,
     user_id     INT UNSIGNED    NOT NULL,
     token       VARCHAR(512)    NOT NULL UNIQUE,
@@ -261,7 +262,7 @@ USE areariservatafc_db;
 -- -----------------------------------------------------------
 -- COLLABORATORI
 -- -----------------------------------------------------------
-CREATE TABLE collaborators (
+CREATE TABLE IF NOT EXISTS collaborators (
     id           INT UNSIGNED     AUTO_INCREMENT PRIMARY KEY,
     first_name   VARCHAR(100)     NOT NULL,
     last_name    VARCHAR(100)     NOT NULL,
@@ -277,7 +278,7 @@ CREATE TABLE collaborators (
 -- -----------------------------------------------------------
 -- UTENTI  (admin + account collaboratore)
 -- -----------------------------------------------------------
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
     id               INT UNSIGNED    AUTO_INCREMENT PRIMARY KEY,
     username         VARCHAR(100)    NOT NULL UNIQUE,
     email            VARCHAR(255)    NOT NULL UNIQUE,
@@ -295,7 +296,7 @@ CREATE TABLE users (
 -- -----------------------------------------------------------
 -- CLIENTI
 -- -----------------------------------------------------------
-CREATE TABLE clients (
+CREATE TABLE IF NOT EXISTS clients (
     id            INT UNSIGNED    AUTO_INCREMENT PRIMARY KEY,
     company_name  VARCHAR(255)    NOT NULL,
     vat_number    VARCHAR(20)     NOT NULL UNIQUE  COMMENT 'Partita IVA',
@@ -314,7 +315,7 @@ CREATE TABLE clients (
 -- -----------------------------------------------------------
 -- TARIFFARIO
 -- -----------------------------------------------------------
-CREATE TABLE tariffs (
+CREATE TABLE IF NOT EXISTS tariffs (
     id             INT UNSIGNED    AUTO_INCREMENT PRIMARY KEY,
     name           VARCHAR(150)    NOT NULL,
     hourly_rate    DECIMAL(10,2)   NOT NULL            COMMENT 'Tariffa oraria in EUR',
@@ -333,7 +334,7 @@ CREATE TABLE tariffs (
 -- -----------------------------------------------------------
 -- ASSEGNAZIONE TARIFFE → COLLABORATORI
 -- -----------------------------------------------------------
-CREATE TABLE tariff_collaborators (
+CREATE TABLE IF NOT EXISTS tariff_collaborators (
     id               INT UNSIGNED    AUTO_INCREMENT PRIMARY KEY,
     tariff_id        INT UNSIGNED    NOT NULL,
     collaborator_id  INT UNSIGNED    NOT NULL,
@@ -346,7 +347,7 @@ CREATE TABLE tariff_collaborators (
 -- -----------------------------------------------------------
 -- ASSEGNAZIONE TARIFFE → CLIENTI
 -- -----------------------------------------------------------
-CREATE TABLE tariff_clients (
+CREATE TABLE IF NOT EXISTS tariff_clients (
     id          INT UNSIGNED    AUTO_INCREMENT PRIMARY KEY,
     tariff_id   INT UNSIGNED    NOT NULL,
     client_id   INT UNSIGNED    NOT NULL,
@@ -359,7 +360,7 @@ CREATE TABLE tariff_clients (
 -- -----------------------------------------------------------
 -- ORE DEI COLLABORATORI (lavorate per me)
 -- -----------------------------------------------------------
-CREATE TABLE collaborator_hours (
+CREATE TABLE IF NOT EXISTS collaborator_hours (
     id               INT UNSIGNED    AUTO_INCREMENT PRIMARY KEY,
     collaborator_id  INT UNSIGNED    NOT NULL,
     tariff_id        INT UNSIGNED    NOT NULL,
@@ -375,7 +376,7 @@ CREATE TABLE collaborator_hours (
 -- -----------------------------------------------------------
 -- ORE MIE (lavorate per un cliente)
 -- -----------------------------------------------------------
-CREATE TABLE my_work_hours (
+CREATE TABLE IF NOT EXISTS my_work_hours (
     id           INT UNSIGNED    AUTO_INCREMENT PRIMARY KEY,
     client_id    INT UNSIGNED    NOT NULL,
     tariff_id    INT UNSIGNED    NOT NULL,
@@ -391,7 +392,7 @@ CREATE TABLE my_work_hours (
 -- -----------------------------------------------------------
 -- FATTURE (simulate)
 -- -----------------------------------------------------------
-CREATE TABLE invoices (
+CREATE TABLE IF NOT EXISTS invoices (
     id              INT UNSIGNED    AUTO_INCREMENT PRIMARY KEY,
     invoice_number  VARCHAR(50)     NOT NULL UNIQUE         COMMENT 'Es. 2024/001',
     client_id       INT UNSIGNED    NOT NULL,
@@ -414,7 +415,7 @@ CREATE TABLE invoices (
 --    tax_inclusive = TRUE  → imponibile = line_total / 1.04  |  tax = line_total - imponibile
 --    tax_inclusive = FALSE → imponibile = hourly_rate * hours |  tax = imponibile * 0.04
 -- -----------------------------------------------------------
-CREATE TABLE invoice_items (
+CREATE TABLE IF NOT EXISTS invoice_items (
     id             INT UNSIGNED    AUTO_INCREMENT PRIMARY KEY,
     invoice_id     INT UNSIGNED    NOT NULL,
     work_hour_id   INT UNSIGNED    NULL   COMMENT 'Ref a my_work_hours (opzionale)',
@@ -433,7 +434,7 @@ CREATE TABLE invoice_items (
 -- -----------------------------------------------------------
 -- REFRESH TOKEN JWT
 -- -----------------------------------------------------------
-CREATE TABLE refresh_tokens (
+CREATE TABLE IF NOT EXISTS refresh_tokens (
     id          INT UNSIGNED    AUTO_INCREMENT PRIMARY KEY,
     user_id     INT UNSIGNED    NOT NULL,
     token       VARCHAR(512)    NOT NULL UNIQUE,

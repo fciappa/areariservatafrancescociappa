@@ -58,7 +58,7 @@
             <th>Cliente</th>
             <th>Tariffa</th>
             <th>Ore</th>
-            <th>€/ora</th>
+            <th>Tariffa</th>
             <th>Lordo</th>
             <th>4%</th>
             <th>Descrizione</th>
@@ -74,9 +74,13 @@
               <span :class="['pill', h.tax_inclusive ? 'in' : 'ex']">
                 {{ h.tax_inclusive ? '4% incl.' : '4% escl.' }}
               </span>
+              <span class="pill rate-pill">{{ h.rate_type === 'daily' ? '📅 giornaliera' : '⏱️ oraria' }}</span>
             </td>
             <td class="mono">{{ h.hours }}h</td>
-            <td class="mono">€ {{ formatAmount(h.hourly_rate) }}</td>
+            <td class="mono">
+              € {{ formatAmount(h.hourly_rate) }}
+              <span class="rate-unit-small">{{ h.rate_type === 'daily' ? '/g' : '/h' }}</span>
+            </td>
             <td class="mono green">€ {{ formatAmount(calcGross(h)) }}</td>
             <td class="mono muted">€ {{ formatAmount(calcTax(h)) }}</td>
             <td class="desc">{{ h.description || '—' }}</td>
@@ -135,7 +139,7 @@
               <select v-model="form.tariff_id">
                 <option value="">Seleziona tariffa…</option>
                 <option v-for="t in tariffs" :key="t.id" :value="t.id">
-                  {{ t.name }} — € {{ formatAmount(t.hourly_rate) }}/h {{ t.is_default ? '⭐' : '' }}
+                  {{ t.name }} — € {{ formatAmount(t.hourly_rate) }}{{ t.rate_type === 'daily' ? '/giorno' : '/h' }} {{ t.is_default ? '⭐' : '' }}
                 </option>
               </select>
               <span v-if="formErrors.tariff_id" class="field-error">{{ formErrors.tariff_id }}</span>
@@ -214,7 +218,8 @@ const selectedTariff = computed(() =>
 const modalPreview = computed(() => {
   const t = selectedTariff.value;
   if (!t) return {};
-  const gross = parseFloat(t.hourly_rate) * (parseFloat(form.hours) || 0);
+  const effective = t.rate_type === 'daily' ? parseFloat(t.hourly_rate) / 8 : parseFloat(t.hourly_rate);
+  const gross = effective * (parseFloat(form.hours) || 0);
   const tax   = t.tax_inclusive ? gross - gross / 1.04 : gross * 0.04;
   const net   = t.tax_inclusive ? gross / 1.04 : gross + tax;
   return { gross: fmt(gross), tax: fmt(tax), net: fmt(net) };
@@ -230,7 +235,10 @@ function fmt(v)  { return Number(v).toLocaleString('it-IT', { minimumFractionDig
 function formatAmount(v) { return fmt(v); }
 function formatDate(d) { return new Date(d).toLocaleDateString('it-IT'); }
 
-function calcGross(h) { return parseFloat(h.hours) * parseFloat(h.hourly_rate); }
+function calcGross(h) {
+  const effective = h.rate_type === 'daily' ? parseFloat(h.hourly_rate) / 8 : parseFloat(h.hourly_rate);
+  return effective * parseFloat(h.hours);
+}
 function calcTax(h) {
   const g = calcGross(h);
   return h.tax_inclusive ? g - g / 1.04 : g * 0.04;
@@ -405,6 +413,8 @@ onMounted(load);
 }
 .pill.in { background: #d1fae5; color: #065f46; }
 .pill.ex { background: #dbeafe; color: #1e40af; }
+.pill.rate-pill { background: #f3f4f6; color: #374151; margin-top: 0.125rem; }
+.rate-unit-small { font-size: 0.75rem; color: #9ca3af; }
 
 .actions { display: flex; gap: 0.25rem; }
 .btn-icon { background: none; border: none; cursor: pointer; padding: 0.25rem 0.375rem; border-radius: 6px; font-size: 1rem; transition: background 0.15s; }

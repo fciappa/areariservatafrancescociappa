@@ -24,12 +24,14 @@ jobs:
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
           local-dir: './'
-          server-dir: '/domains/francescociappa.eu/public_html/areariservata'
+          server-dir: '/domains/francescociappa.eu/public_html/areariservata/'
           exclude: |
             **/.git/**
             **/.github/**
             **/.omc/**
             **/node_modules/**
+            database/
             backend/.env
+            backend/.env.development
             setup.js
             README.md

@@ -4,3 +4,8 @@ dist/
 *.log
 .DS_Store
 .omc/
+frontend/.env.*
+
+# Env files con segreti (non committare)
+backend/.env.development
+backend/.env.production

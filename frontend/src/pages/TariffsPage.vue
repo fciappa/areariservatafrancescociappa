@@ -40,7 +40,7 @@
         </div>
 
         <div class="card-rate">
-          € {{ formatAmount(t.hourly_rate) }}<span class="rate-unit">/ora</span>
+          € {{ formatAmount(t.hourly_rate) }}<span class="rate-unit">{{ t.rate_type === 'daily' ? '/giorno (8h)' : '/ora' }}</span>
         </div>
 
         <div class="card-meta">
@@ -76,8 +76,27 @@
               <span v-if="formErrors.name" class="field-error">{{ formErrors.name }}</span>
             </div>
 
+            <!-- Tipo tariffa -->
+            <div class="field-group">
+              <div class="field-group-label">Tipo tariffa</div>
+              <label class="radio-card" :class="{ selected: form.rate_type === 'hourly' }">
+                <input v-model="form.rate_type" type="radio" value="hourly" />
+                <div>
+                  <div class="radio-title">⏱️ Oraria</div>
+                  <div class="radio-sub">La tariffa è espressa per ora lavorata</div>
+                </div>
+              </label>
+              <label class="radio-card" :class="{ selected: form.rate_type === 'daily' }">
+                <input v-model="form.rate_type" type="radio" value="daily" />
+                <div>
+                  <div class="radio-title">📅 Giornaliera</div>
+                  <div class="radio-sub">La tariffa è per giornata intera (8 ore)</div>
+                </div>
+              </label>
+            </div>
+
             <div class="field" :class="{ error: formErrors.hourly_rate }">
-              <label>Tariffa oraria (€) *</label>
+              <label>{{ form.rate_type === 'daily' ? 'Tariffa giornaliera (€)' : 'Tariffa oraria (€)' }} *</label>
               <input v-model="form.hourly_rate" type="number" min="0" step="0.01" placeholder="0.00" />
               <span v-if="formErrors.hourly_rate" class="field-error">{{ formErrors.hourly_rate }}</span>
             </div>
@@ -129,7 +148,7 @@
 
             <!-- Preview calcolo -->
             <div class="preview-box">
-              <div class="preview-title">🔢 Anteprima calcolo (es. 10 ore)</div>
+              <div class="preview-title">🔢 Anteprima calcolo (es. {{ preview.label }})</div>
               <div class="preview-rows">
                 <div class="preview-row">
                   <span>Imponibile</span>
@@ -175,7 +194,7 @@ const saveError = ref('');
 const modal = reactive({ open: false, isNew: true, _id: null });
 
 const emptyForm = () => ({
-  name: '', hourly_rate: '', valid_from: today(),
+  name: '', rate_type: 'hourly', hourly_rate: '', valid_from: today(),
   valid_to: '', is_default: false, tax_inclusive: false, notes: '',
 });
 
@@ -185,8 +204,10 @@ const formErrors = reactive({ name: '', hourly_rate: '', valid_from: '' });
 // ── Preview calcolo ──────────────────────────────────────
 const preview = computed(() => {
   const rate  = parseFloat(form.hourly_rate) || 0;
-  const hours = 10;
-  const gross = rate * hours;
+  // Se giornaliera: 1 giorno = 8 ore → tariffa effettiva/ora = rate / 8
+  const effectiveHourly = form.rate_type === 'daily' ? rate / 8 : rate;
+  const hours = form.rate_type === 'daily' ? 8 : 10; // anteprima: 1 giorno o 10 ore
+  const gross = effectiveHourly * hours;
   let imponibile, tax;
   if (form.tax_inclusive) {
     imponibile = gross / 1.04;
@@ -197,6 +218,7 @@ const preview = computed(() => {
   }
   const total = imponibile + tax + 2; // bollo
   return {
+    label:      form.rate_type === 'daily' ? '1 giorno (8h)' : '10 ore',
     imponibile: fmt(imponibile),
     tax:        fmt(tax),
     total:      fmt(total),
@@ -255,6 +277,7 @@ function openEdit(t) {
   resetForm();
   Object.assign(form, {
     name:          t.name,
+    rate_type:     t.rate_type ?? 'hourly',
     hourly_rate:   t.hourly_rate,
     valid_from:    t.valid_from?.slice(0, 10) ?? '',
     valid_to:      t.valid_to?.slice(0, 10)   ?? '',

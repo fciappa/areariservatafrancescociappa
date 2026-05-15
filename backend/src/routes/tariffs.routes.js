@@ -17,7 +17,7 @@ router.get('/:id', async (req, res) => {
 });
 
 router.post('/', requireAdmin, async (req, res) => {
-  const { name, hourly_rate, valid_from, valid_to, is_default, tax_inclusive, notes } = req.body;
+  const { name, rate_type, hourly_rate, valid_from, valid_to, is_default, tax_inclusive, notes } = req.body;
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
@@ -25,8 +25,8 @@ router.post('/', requireAdmin, async (req, res) => {
       await conn.query('UPDATE tariffs SET is_default = 0');
     }
     const [result] = await conn.query(
-      'INSERT INTO tariffs (name, hourly_rate, valid_from, valid_to, is_default, tax_inclusive, notes) VALUES (?,?,?,?,?,?,?)',
-      [name, hourly_rate, valid_from, valid_to ?? null, is_default ?? false, tax_inclusive ?? false, notes]
+      'INSERT INTO tariffs (name, rate_type, hourly_rate, valid_from, valid_to, is_default, tax_inclusive, notes) VALUES (?,?,?,?,?,?,?,?)',
+      [name, rate_type ?? 'hourly', hourly_rate, valid_from, valid_to ?? null, is_default ?? false, tax_inclusive ?? false, notes]
     );
     await conn.commit();
     res.status(201).json({ id: result.insertId });
@@ -39,7 +39,7 @@ router.post('/', requireAdmin, async (req, res) => {
 });
 
 router.put('/:id', requireAdmin, async (req, res) => {
-  const { name, hourly_rate, valid_from, valid_to, is_default, tax_inclusive, notes } = req.body;
+  const { name, rate_type, hourly_rate, valid_from, valid_to, is_default, tax_inclusive, notes } = req.body;
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
@@ -47,8 +47,8 @@ router.put('/:id', requireAdmin, async (req, res) => {
       await conn.query('UPDATE tariffs SET is_default = 0 WHERE id != ?', [req.params.id]);
     }
     await conn.query(
-      'UPDATE tariffs SET name=?, hourly_rate=?, valid_from=?, valid_to=?, is_default=?, tax_inclusive=?, notes=? WHERE id=?',
-      [name, hourly_rate, valid_from, valid_to ?? null, is_default ?? false, tax_inclusive ?? false, notes, req.params.id]
+      'UPDATE tariffs SET name=?, rate_type=?, hourly_rate=?, valid_from=?, valid_to=?, is_default=?, tax_inclusive=?, notes=? WHERE id=?',
+      [name, rate_type ?? 'hourly', hourly_rate, valid_from, valid_to ?? null, is_default ?? false, tax_inclusive ?? false, notes, req.params.id]
     );
     await conn.commit();
     res.json({ message: 'Aggiornato' });
