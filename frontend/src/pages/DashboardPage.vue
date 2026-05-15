@@ -54,7 +54,7 @@
         <section class="card">
           <div class="card-header">
             <h3>⏱️ Ore questo mese</h3>
-            <RouterLink to="/ore-mie" class="card-link">Gestisci →</RouterLink>
+            <RouterLink to="/my-hours" class="card-link">Gestisci →</RouterLink>
           </div>
           <div v-if="loading" class="skeleton-list">
             <div v-for="i in 3" :key="i" class="skeleton-row" />

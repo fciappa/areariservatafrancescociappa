@@ -11,7 +11,7 @@ router.use(requireAuth);
 router.get('/collaborators', async (req, res) => {
   if (req.user.role === 'admin') {
     const [rows] = await pool.query(`
-      SELECT ch.*, c.first_name, c.last_name, t.name AS tariff_name, t.hourly_rate, t.tax_inclusive
+      SELECT ch.*, c.first_name, c.last_name, t.name AS tariff_name, t.hourly_rate, t.rate_type, t.tax_inclusive
       FROM collaborator_hours ch
       JOIN collaborators c ON c.id = ch.collaborator_id
       JOIN tariffs t ON t.id = ch.tariff_id
@@ -19,9 +19,8 @@ router.get('/collaborators', async (req, res) => {
     `);
     return res.json(rows);
   }
-  // collaboratore: solo le sue
   const [rows] = await pool.query(`
-    SELECT ch.*, t.name AS tariff_name, t.hourly_rate, t.tax_inclusive
+    SELECT ch.*, t.name AS tariff_name, t.hourly_rate, t.rate_type, t.tax_inclusive
     FROM collaborator_hours ch
     JOIN tariffs t ON t.id = ch.tariff_id
     WHERE ch.collaborator_id = ?
@@ -57,7 +56,7 @@ router.delete('/collaborators/:id', requireAdmin, async (req, res) => {
 
 router.get('/my', requireAdmin, async (_req, res) => {
   const [rows] = await pool.query(`
-    SELECT mwh.*, cl.company_name, t.name AS tariff_name, t.hourly_rate, t.tax_inclusive
+    SELECT mwh.*, cl.company_name, t.name AS tariff_name, t.hourly_rate, t.rate_type, t.tax_inclusive
     FROM my_work_hours mwh
     JOIN clients cl ON cl.id = mwh.client_id
     JOIN tariffs t  ON t.id  = mwh.tariff_id
