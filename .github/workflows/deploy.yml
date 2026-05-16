@@ -13,16 +13,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.2'
-          extensions: pdo_mysql, mbstring, openssl
-
-      - name: Install Composer dependencies
-        working-directory: backend-laravel
-        run: composer install --no-dev --optimize-autoloader --no-interaction
-
       - name: Deploy via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
@@ -38,6 +28,7 @@ jobs:
             **/README.md
             **/.env
             **/.env.*
+            **/vendor/**
             **/tests/**
             **/storage/logs/**
             **/.editorconfig
