@@ -6,7 +6,7 @@
  * Set INSTALL_TOKEN to a random string of your choice before deploying.
  */
 
-const INSTALL_TOKEN = 'CAMBIA_QUESTO_TOKEN';
+const INSTALL_TOKEN = 'Cqt3kXAt5u9n3oIr+pgsJCDvy/Vm5Xwh/uqeiseoFDk=PS';
 const APP_ROOT      = __DIR__ . '/..';
 
 // ── Security check ──────────────────────────────────────────────────────────
