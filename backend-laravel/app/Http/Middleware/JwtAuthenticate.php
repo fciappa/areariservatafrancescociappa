@@ -1,0 +1,31 @@
+<?php
+
+namespace App\Http\Middleware;
+
+use Closure;
+use Firebase\JWT\JWT;
+use Firebase\JWT\Key;
+use Illuminate\Http\Request;
+
+class JwtAuthenticate
+{
+    public function handle(Request $request, Closure $next)
+    {
+        $header = $request->header('Authorization', '');
+
+        if (!$header || !str_starts_with($header, 'Bearer ')) {
+            return response()->json(['message' => 'Token mancante'], 401);
+        }
+
+        $token = substr($header, 7);
+
+        try {
+            $decoded = JWT::decode($token, new Key(env('JWT_SECRET'), 'HS256'));
+            $request->attributes->set('jwt_user', $decoded);
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Token non valido o scaduto'], 401);
+        }
+
+        return $next($request);
+    }
+}
