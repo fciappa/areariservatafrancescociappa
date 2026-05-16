@@ -15,8 +15,6 @@ backend-laravel/vendor/
 backend-laravel/.env
 backend-laravel/.env.development
 backend-laravel/.env.production
-backend-laravel/public/assets/
-backend-laravel/public/index.html
 
 # Script locali
 create-dirs.js
