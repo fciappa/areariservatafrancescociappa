@@ -105,9 +105,40 @@ class HoursController extends Controller
         return response()->json(['message' => 'Aggiornato']);
     }
 
+    public function updateMy(Request $request, int $id)
+    {
+        DB::table('my_work_hours')->where('id', $id)->update([
+            'client_id'   => $request->input('client_id'),
+            'project_id'  => $request->input('project_id'),
+            'tariff_id'   => $request->input('tariff_id'),
+            'work_date'   => $request->input('work_date'),
+            'hours'       => $request->input('hours'),
+            'description' => $request->input('description', ''),
+        ]);
+        return response()->json(['message' => 'Aggiornato']);
+    }
+
     public function destroyMy(int $id)
     {
         DB::table('my_work_hours')->where('id', $id)->delete();
         return response()->json(['message' => 'Eliminato']);
+    }
+
+    public function bulkStoreMy(Request $request)
+    {
+        $rows = $request->input('rows', []);
+        $count = 0;
+        foreach ($rows as $row) {
+            DB::table('my_work_hours')->insert([
+                'client_id'   => $row['client_id'],
+                'project_id'  => $row['project_id'] ?? null,
+                'tariff_id'   => $row['tariff_id'],
+                'work_date'   => $row['work_date'],
+                'hours'       => $row['hours'],
+                'description' => $row['description'] ?? '',
+            ]);
+            $count++;
+        }
+        return response()->json(['count' => $count], 201);
     }
 }

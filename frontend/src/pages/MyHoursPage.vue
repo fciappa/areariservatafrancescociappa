@@ -5,7 +5,10 @@
         <h2>⏱️ Le mie ore</h2>
         <p class="page-sub">Ore lavorate per i clienti</p>
       </div>
-      <button class="btn-primary" @click="openNew">+ Inserisci ore</button>
+      <div class="header-actions">
+        <button class="btn-secondary" @click="openMulti">📅 Più giorni</button>
+        <button class="btn-primary" @click="openNew">+ Inserisci ore</button>
+      </div>
     </div>
 
     <!-- Filtri -->
@@ -85,6 +88,7 @@
             <td class="mono muted">€ {{ formatAmount(calcTax(h)) }}</td>
             <td class="desc">{{ h.description || '—' }}</td>
             <td class="actions">
+              <button class="btn-icon" title="Duplica" @click="openDuplicate(h)">📋</button>
               <button class="btn-icon" title="Modifica" @click="openEdit(h)">✏️</button>
               <button class="btn-icon" title="Elimina" @click="remove(h)">🗑️</button>
             </td>
@@ -98,12 +102,46 @@
       <div v-if="modal.open" class="modal-overlay" @click.self="closeModal">
         <div class="modal">
           <div class="modal-header">
-            <h3>{{ modal.isNew ? 'Inserisci ore' : 'Modifica ore' }}</h3>
+            <h3>{{ modal.mode === 'multi' ? 'Inserisci più giorni' : (modal.isNew ? 'Inserisci ore' : 'Modifica ore') }}</h3>
             <button class="modal-close" @click="closeModal">✕</button>
           </div>
           <form class="modal-form" @submit.prevent="save">
 
-            <div class="form-row">
+            <!-- Mode tabs (solo su nuovo inserimento) -->
+            <div v-if="modal.isNew" class="mode-tabs">
+              <button type="button" :class="['mode-tab', modal.mode === 'single' && 'active']" @click="modal.mode = 'single'">Singolo giorno</button>
+              <button type="button" :class="['mode-tab', modal.mode === 'multi' && 'active']" @click="modal.mode = 'multi'">Più giorni</button>
+            </div>
+
+            <!-- Selezione giorni (solo multi) -->
+            <template v-if="modal.mode === 'multi'">
+              <div class="form-row">
+                <div class="field">
+                  <label>Dal *</label>
+                  <input v-model="multiForm.date_from" type="date" />
+                </div>
+                <div class="field">
+                  <label>Al *</label>
+                  <input v-model="multiForm.date_to" type="date" />
+                </div>
+              </div>
+              <div class="field">
+                <label>Giorni della settimana</label>
+                <div class="weekday-grid">
+                  <label v-for="w in WEEKDAYS" :key="w.day" :class="['weekday-btn', selectedWeekdays.includes(w.day) && 'on']">
+                    <input type="checkbox" :value="w.day" v-model="selectedWeekdays" hidden />
+                    {{ w.label }}
+                  </label>
+                </div>
+                <span class="hint-ok" v-if="selectedDates.length">
+                  {{ selectedDates.length }} {{ selectedDates.length === 1 ? 'giorno' : 'giorni' }} selezionati
+                </span>
+                <span class="field-error" v-else-if="multiForm.date_from && multiForm.date_to">Nessun giorno nel range</span>
+              </div>
+            </template>
+
+            <!-- Data singola + ore (solo single) -->
+            <div v-if="modal.mode === 'single'" class="form-row">
               <div class="field" :class="{ error: formErrors.work_date }">
                 <label>Data *</label>
                 <input v-model="form.work_date" type="date" />
@@ -114,6 +152,13 @@
                 <input v-model="form.hours" type="number" min="0.25" max="24" step="0.25" placeholder="8" />
                 <span v-if="formErrors.hours" class="field-error">{{ formErrors.hours }}</span>
               </div>
+            </div>
+
+            <!-- Ore per giorno (solo multi) -->
+            <div v-else class="field" :class="{ error: formErrors.hours }">
+              <label>Ore per giorno *</label>
+              <input v-model="form.hours" type="number" min="0.25" max="24" step="0.25" placeholder="8" />
+              <span v-if="formErrors.hours" class="field-error">{{ formErrors.hours }}</span>
             </div>
 
             <div class="field" :class="{ error: formErrors.client_id }">
@@ -165,9 +210,9 @@
 
             <div class="modal-footer">
               <button type="button" class="btn-secondary" @click="closeModal">Annulla</button>
-              <button type="submit" class="btn-primary" :disabled="saving">
+              <button type="submit" class="btn-primary" :disabled="saving || (modal.mode === 'multi' && !selectedDates.length)">
                 <span v-if="saving" class="spinner" />
-                {{ saving ? 'Salvataggio…' : 'Salva' }}
+                {{ saving ? 'Salvataggio…' : modal.mode === 'multi' ? `Inserisci ${selectedDates.length} giorni` : 'Salva' }}
               </button>
             </div>
           </form>
@@ -193,9 +238,16 @@ const filterProject = ref('');
 const filterMonth   = ref(new Date().toISOString().slice(0, 7));
 const tariffResolved = ref(false);
 
-const modal = reactive({ open: false, isNew: true, _id: null });
+const modal = reactive({ open: false, isNew: true, _id: null, mode: 'single' });
 const form  = reactive({ work_date: today(), hours: '', client_id: '', project_id: '', tariff_id: '', description: '' });
 const formErrors = reactive({ work_date: '', hours: '', client_id: '', project_id: '', tariff_id: '' });
+
+const WEEKDAYS = [
+  { day: 1, label: 'Lun' }, { day: 2, label: 'Mar' }, { day: 3, label: 'Mer' },
+  { day: 4, label: 'Gio' }, { day: 5, label: 'Ven' }, { day: 6, label: 'Sab' }, { day: 0, label: 'Dom' },
+];
+const multiForm        = reactive({ date_from: today(), date_to: today() });
+const selectedWeekdays = ref([1, 2, 3, 4, 5]);
 
 // ── Computed ─────────────────────────────────────────────
 const filteredProjects = computed(() =>
@@ -228,6 +280,18 @@ const modalPreview = computed(() => {
 const totalHours = computed(() => filtered.value.reduce((s, h) => s + parseFloat(h.hours), 0));
 const totalGross = computed(() => filtered.value.reduce((s, h) => s + calcGross(h), 0));
 const totalTax   = computed(() => filtered.value.reduce((s, h) => s + calcTax(h), 0));
+
+const selectedDates = computed(() => {
+  if (!multiForm.date_from || !multiForm.date_to) return [];
+  const start = new Date(multiForm.date_from + 'T00:00:00');
+  const end   = new Date(multiForm.date_to   + 'T00:00:00');
+  if (start > end) return [];
+  const dates = [];
+  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1))
+    if (selectedWeekdays.value.includes(d.getDay()))
+      dates.push(d.toISOString().slice(0, 10));
+  return dates;
+});
 
 // ── Helpers ──────────────────────────────────────────────
 function today() { return new Date().toISOString().slice(0, 10); }
@@ -309,7 +373,27 @@ async function load() {
   }
 }
 
-function openNew() { resetForm(); modal.isNew = true; modal.open = true; modal._id = null; }
+function openNew() { resetForm(); modal.isNew = true; modal.open = true; modal._id = null; modal.mode = 'single'; }
+
+function openMulti() {
+  resetForm();
+  multiForm.date_from = today(); multiForm.date_to = today();
+  selectedWeekdays.value = [1, 2, 3, 4, 5];
+  modal.isNew = true; modal.open = true; modal._id = null; modal.mode = 'multi';
+}
+
+function openDuplicate(h) {
+  resetForm();
+  Object.assign(form, {
+    work_date:   today(),
+    hours:       h.hours,
+    client_id:   h.client_id,
+    project_id:  h.project_id ?? '',
+    tariff_id:   h.tariff_id,
+    description: h.description ?? '',
+  });
+  modal.isNew = true; modal.open = true; modal._id = null; modal.mode = 'single';
+}
 
 function openEdit(h) {
   resetForm();
@@ -327,6 +411,30 @@ function openEdit(h) {
 function closeModal() { modal.open = false; }
 
 async function save() {
+  if (modal.mode === 'multi') {
+    formErrors.client_id = form.client_id ? '' : 'Obbligatorio';
+    formErrors.tariff_id = form.tariff_id ? '' : 'Obbligatorio';
+    formErrors.hours     = form.hours     ? '' : 'Obbligatorio';
+    if (Object.values(formErrors).some(Boolean)) return;
+    if (!selectedDates.value.length) { saveError.value = 'Nessun giorno selezionato nel range.'; return; }
+    saving.value = true; saveError.value = '';
+    try {
+      await api.post('/hours/my/bulk', {
+        rows: selectedDates.value.map(date => ({
+          client_id:   form.client_id,
+          project_id:  form.project_id || null,
+          tariff_id:   form.tariff_id,
+          work_date:   date,
+          hours:       form.hours,
+          description: form.description,
+        })),
+      });
+      await load(); closeModal();
+    } catch (err) {
+      saveError.value = err.response?.data?.message ?? 'Errore durante il salvataggio.';
+    } finally { saving.value = false; }
+    return;
+  }
   if (!validate()) return;
   saving.value = true; saveError.value = '';
   try {
@@ -466,6 +574,26 @@ onMounted(load);
 
 .empty-state { text-align: center; padding: 4rem 2rem; color: #9ca3af; }
 .empty-state span { font-size: 2.5rem; display: block; margin-bottom: 0.75rem; }
+
+.header-actions { display: flex; gap: 0.5rem; align-items: center; }
+
+/* ── Mode tabs ──────────────────────────────────────────── */
+.mode-tabs { display: flex; background: #f3f4f6; border-radius: 8px; padding: 3px; gap: 2px; }
+.mode-tab {
+  flex: 1; padding: 0.4rem 0.75rem; border: none; border-radius: 6px;
+  font-size: 0.85rem; font-weight: 600; cursor: pointer;
+  background: transparent; color: #6b7280; transition: all 0.15s;
+}
+.mode-tab.active { background: #fff; color: #0f3460; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+
+/* ── Weekday grid ───────────────────────────────────────── */
+.weekday-grid { display: flex; gap: 0.375rem; flex-wrap: wrap; margin-top: 0.375rem; }
+.weekday-btn {
+  padding: 0.35rem 0.6rem; border-radius: 6px; border: 1.5px solid #d1d5db;
+  font-size: 0.8rem; font-weight: 600; cursor: pointer; color: #6b7280;
+  background: #f9fafb; transition: all 0.15s; user-select: none;
+}
+.weekday-btn.on { background: #dbeafe; border-color: #3b82f6; color: #1e40af; }
 
 @media (max-width: 768px) { .page { padding: 1rem; } }
 </style>

@@ -63,10 +63,11 @@ Route::middleware('auth.jwt')->group(function () {
     Route::delete('/hours/collaborators/{id}',  [HoursController::class, 'destroyCollaborator']);
 
     Route::middleware('admin')->group(function () {
-        Route::get('/hours/my',          [HoursController::class, 'indexMy']);
-        Route::post('/hours/my',         [HoursController::class, 'storeMy']);
-        Route::put('/hours/my/{id}',     [HoursController::class, 'updateMy']);
-        Route::delete('/hours/my/{id}',  [HoursController::class, 'destroyMy']);
+        Route::get('/hours/my',           [HoursController::class, 'indexMy']);
+        Route::post('/hours/my/bulk',     [HoursController::class, 'bulkStoreMy']);
+        Route::post('/hours/my',          [HoursController::class, 'storeMy']);
+        Route::put('/hours/my/{id}',      [HoursController::class, 'updateMy']);
+        Route::delete('/hours/my/{id}',   [HoursController::class, 'destroyMy']);
     });
 
     // Invoices (admin only) — summary/monthly BEFORE /{id}
