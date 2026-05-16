@@ -11,7 +11,7 @@ echo.
 
 :: ── Backend Laravel ───────────────────────────────────
 echo  [1/2] Avvio backend Laravel su http://localhost:8000
-start "Laravel Backend" cmd /k "cd /d T:\francescociappa\areariservata\backend-laravel && php artisan serve"
+start "Laravel Backend" cmd /k "cd /d T:\francescociappa\areariservata\backend-laravel && php -S localhost:8000 index.php"
 
 :: Attendi un momento prima di avviare il frontend
 timeout /t 2 /nobreak >nul

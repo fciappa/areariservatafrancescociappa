@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class TariffsController extends Controller
 {
@@ -44,6 +45,7 @@ class TariffsController extends Controller
             ]);
         });
 
+        Log::info('Tariffs: creata', ['id' => $insertId, 'name' => $request->input('name'), 'is_default' => $isDefault]);
         return response()->json(['id' => $insertId], 201);
     }
 
@@ -67,12 +69,14 @@ class TariffsController extends Controller
             ]);
         });
 
+        Log::info('Tariffs: aggiornata', ['id' => $id]);
         return response()->json(['message' => 'Aggiornato']);
     }
 
     public function destroy(int $id)
     {
         DB::table('tariffs')->where('id', $id)->delete();
+        Log::info('Tariffs: eliminata', ['id' => $id]);
         return response()->json(['message' => 'Eliminato']);
     }
 }

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class ClientsController extends Controller
 {
@@ -36,6 +37,7 @@ class ClientsController extends Controller
             'country'      => $request->input('country', 'Italia'),
             'notes'        => $request->input('notes'),
         ]);
+        Log::info('Clients: creato', ['id' => $id, 'company' => $request->input('company_name')]);
         return response()->json(['id' => $id], 201);
     }
 
@@ -53,12 +55,14 @@ class ClientsController extends Controller
             'notes'        => $request->input('notes'),
             'is_active'    => $request->input('is_active', 1),
         ]);
+        Log::info('Clients: aggiornato', ['id' => $id]);
         return response()->json(['message' => 'Aggiornato']);
     }
 
     public function destroy(int $id)
     {
         DB::table('clients')->where('id', $id)->update(['is_active' => 0]);
+        Log::info('Clients: disattivato', ['id' => $id]);
         return response()->json(['message' => 'Disattivato']);
     }
 }

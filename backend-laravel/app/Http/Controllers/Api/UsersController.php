@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 
 class UsersController extends Controller
 {
@@ -26,6 +27,7 @@ class UsersController extends Controller
             'role'            => $request->input('role', 'collaborator'),
             'collaborator_id' => $request->input('collaborator_id'),
         ]);
+        Log::info('Users: creato', ['user_id' => $id, 'username' => $request->input('username'), 'role' => $request->input('role', 'collaborator')]);
         return response()->json(['id' => $id], 201);
     }
 
@@ -34,12 +36,14 @@ class UsersController extends Controller
         DB::table('users')->where('id', $id)->update([
             'password_hash' => Hash::make($request->input('password')),
         ]);
+        Log::info('Users: password cambiata', ['target_user_id' => $id]);
         return response()->json(['message' => 'Password aggiornata']);
     }
 
     public function toggle(int $id)
     {
         DB::statement('UPDATE users SET is_active = NOT is_active WHERE id = ?', [$id]);
+        Log::info('Users: toggle attivo', ['target_user_id' => $id]);
         return response()->json(['message' => 'Stato aggiornato']);
     }
 }

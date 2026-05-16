@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class InvoicesController extends Controller
 {
@@ -126,12 +127,14 @@ class InvoicesController extends Controller
             }
         });
 
+        Log::info('Invoices: fattura creata', ['id' => $invoiceId, 'invoice_number' => $request->input('invoice_number'), 'client_id' => $request->input('client_id'), 'total' => $request->input('total')]);
         return response()->json(['id' => $invoiceId], 201);
     }
 
     public function updateStatus(Request $request, int $id)
     {
         DB::table('invoices')->where('id', $id)->update(['status' => $request->input('status')]);
+        Log::info('Invoices: stato aggiornato', ['id' => $id, 'status' => $request->input('status')]);
         return response()->json(['message' => 'Stato aggiornato']);
     }
 }

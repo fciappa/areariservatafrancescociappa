@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class HoursController extends Controller
 {
@@ -44,6 +45,7 @@ class HoursController extends Controller
             'hours'           => $request->input('hours'),
             'description'     => $request->input('description', ''),
         ]);
+        Log::info('Hours: ore collaboratore registrate', ['id' => $id, 'collaborator_id' => $request->input('collaborator_id'), 'work_date' => $request->input('work_date'), 'hours' => $request->input('hours')]);
         return response()->json(['id' => $id], 201);
     }
 
@@ -57,12 +59,14 @@ class HoursController extends Controller
             'hours'           => $request->input('hours'),
             'description'     => $request->input('description', ''),
         ]);
+        Log::info('Hours: ore collaboratore aggiornate', ['id' => $id]);
         return response()->json(['message' => 'Aggiornato']);
     }
 
     public function destroyCollaborator(int $id)
     {
         DB::table('collaborator_hours')->where('id', $id)->delete();
+        Log::info('Hours: ore collaboratore eliminate', ['id' => $id]);
         return response()->json(['message' => 'Eliminato']);
     }
 
@@ -89,6 +93,7 @@ class HoursController extends Controller
             'hours'       => $request->input('hours'),
             'description' => $request->input('description', ''),
         ]);
+        Log::info('Hours: ore personali registrate', ['id' => $id, 'work_date' => $request->input('work_date'), 'hours' => $request->input('hours')]);
         return response()->json(['id' => $id], 201);
     }
 
@@ -102,12 +107,14 @@ class HoursController extends Controller
             'hours'       => $request->input('hours'),
             'description' => $request->input('description', ''),
         ]);
+        Log::info('Hours: ore personali aggiornate', ['id' => $id]);
         return response()->json(['message' => 'Aggiornato']);
     }
 
     public function destroyMy(int $id)
     {
         DB::table('my_work_hours')->where('id', $id)->delete();
+        Log::info('Hours: ore personali eliminate', ['id' => $id]);
         return response()->json(['message' => 'Eliminato']);
     }
 
@@ -126,6 +133,7 @@ class HoursController extends Controller
             ]);
             $count++;
         }
+        Log::info('Hours: bulk insert ore personali', ['count' => $count]);
         return response()->json(['count' => $count], 201);
     }
 }

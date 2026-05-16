@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class ProjectsController extends Controller
 {
@@ -49,6 +50,7 @@ class ProjectsController extends Controller
     public function store(Request $request)
     {
         if (!$request->filled('client_id') || !$request->filled('name') || !$request->filled('start_date')) {
+            Log::warning('Projects: store - dati obbligatori mancanti', ['input' => $request->only('client_id', 'name', 'start_date')]);
             return response()->json(['message' => 'client_id, name e start_date sono obbligatori'], 400);
         }
 
@@ -61,6 +63,7 @@ class ProjectsController extends Controller
             'end_date'    => $request->input('end_date'),
             'notes'       => $request->input('notes'),
         ]);
+        Log::info('Projects: creato', ['id' => $id, 'name' => $request->input('name'), 'client_id' => $request->input('client_id')]);
 
         $rows = DB::select(
             'SELECT p.*, c.company_name FROM projects p JOIN clients c ON c.id = p.client_id WHERE p.id = ?',
@@ -81,6 +84,7 @@ class ProjectsController extends Controller
             'notes'       => $request->input('notes'),
             'is_active'   => $request->input('is_active', true) !== false ? 1 : 0,
         ]);
+        Log::info('Projects: aggiornato', ['id' => $id]);
 
         $rows = DB::select(
             'SELECT p.*, c.company_name FROM projects p JOIN clients c ON c.id = p.client_id WHERE p.id = ?',
@@ -92,6 +96,7 @@ class ProjectsController extends Controller
     public function addAssignment(Request $request, int $id)
     {
         if (!$request->filled('tariff_id')) {
+            Log::warning('Projects: addAssignment - tariff_id mancante', ['project_id' => $id]);
             return response()->json(['message' => 'tariff_id obbligatorio'], 400);
         }
 
@@ -101,6 +106,7 @@ class ProjectsController extends Controller
                 'project_id'      => $id,
                 'collaborator_id' => $request->input('collaborator_id'),
             ]);
+            Log::info('Projects: assegnazione aggiunta', ['project_id' => $id, 'assign_id' => $assignId, 'tariff_id' => $request->input('tariff_id')]);
 
             $rows = DB::select('
                 SELECT ta.*, t.name AS tariff_name, t.hourly_rate, t.tax_inclusive,
@@ -114,6 +120,7 @@ class ProjectsController extends Controller
             return response()->json($rows[0], 201);
         } catch (\Illuminate\Database\QueryException $e) {
             if (($e->errorInfo[1] ?? null) === 1062) {
+                Log::warning('Projects: assegnazione duplicata', ['project_id' => $id, 'tariff_id' => $request->input('tariff_id'), 'collaborator_id' => $request->input('collaborator_id')]);
                 return response()->json([
                     'message' => 'Assegnazione già esistente per questo progetto e collaboratore'
                 ], 409);
@@ -125,6 +132,7 @@ class ProjectsController extends Controller
     public function removeAssignment(int $assignId)
     {
         DB::table('tariff_assignments')->where('id', $assignId)->delete();
+        Log::info('Projects: assegnazione rimossa', ['assign_id' => $assignId]);
         return response()->json(['success' => true]);
     }
 

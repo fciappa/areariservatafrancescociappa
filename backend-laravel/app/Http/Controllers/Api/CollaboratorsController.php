@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class CollaboratorsController extends Controller
 {
@@ -33,6 +34,7 @@ class CollaboratorsController extends Controller
             'fiscal_code' => $request->input('fiscal_code'),
             'notes'       => $request->input('notes'),
         ]);
+        Log::info('Collaborators: creato', ['id' => $id, 'name' => $request->input('last_name').' '.$request->input('first_name')]);
         return response()->json(['id' => $id], 201);
     }
 
@@ -47,12 +49,14 @@ class CollaboratorsController extends Controller
             'notes'       => $request->input('notes'),
             'is_active'   => $request->input('is_active', 1),
         ]);
+        Log::info('Collaborators: aggiornato', ['id' => $id]);
         return response()->json(['message' => 'Aggiornato']);
     }
 
     public function destroy(int $id)
     {
         DB::table('collaborators')->where('id', $id)->update(['is_active' => 0]);
+        Log::info('Collaborators: disattivato', ['id' => $id]);
         return response()->json(['message' => 'Disattivato']);
     }
 }
