@@ -1,5 +1,21 @@
 <IfModule mod_rewrite.c>
     RewriteEngine On
-    RewriteCond %{REQUEST_URI} !^/public/
+
+    SetEnv APP_ENV production
+
+    # Pass Authorization header to PHP
+    RewriteCond %{HTTP:Authorization} .
+    RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
+    # Route /api/* to Laravel (root index.php)
+    RewriteCond %{REQUEST_URI} ^/api/
+    RewriteRule ^ index.php [L]
+
+    # Serve static files/dirs from public/ if they exist
+    RewriteCond %{DOCUMENT_ROOT}/public%{REQUEST_URI} -f [OR]
+    RewriteCond %{DOCUMENT_ROOT}/public%{REQUEST_URI} -d
     RewriteRule ^(.*)$ public/$1 [L,QSA]
+
+    # Everything else → Vue SPA
+    RewriteRule ^ public/index.html [L]
 </IfModule>
