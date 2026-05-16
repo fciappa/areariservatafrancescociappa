@@ -4,7 +4,7 @@ Applicazione web personale per la gestione di collaboratori, clienti, tariffe, o
 
 ## Stack
 - **Frontend**: Vue 3 + Vite + Vue Router + Pinia
-- **Backend**: Node.js + Express
+- **Backend**: PHP 8.1+ / Laravel 11
 - **Database**: MySQL 8+
 - **Auth**: JWT (access token + refresh token)
 
@@ -12,40 +12,36 @@ Applicazione web personale per la gestione di collaboratori, clienti, tariffe, o
 
 ```
 areariservata/
-├── backend/          # API Node.js + Express
+├── backend-laravel/  # API Laravel (PHP 8.1+)
 ├── frontend/         # App Vue 3 + Vite
-├── database.sql      # Schema MySQL
-└── package.json      # Monorepo root
+├── database/         # Schema MySQL e migrations
+├── initialize.bat    # Setup prima installazione
+└── start.bat         # Avvio ambiente di sviluppo
 ```
 
-## Setup
+## Prima installazione (nuova macchina)
 
-### 1. Database
-```bash
-mysql -u root -p < database.sql
+### Prerequisiti
+- PHP 8.1+ — https://www.php.net/downloads
+- Composer — https://getcomposer.org
+- Node.js — https://nodejs.org
+- MySQL 8+ — https://dev.mysql.com/downloads
+
+### Avvio guidato
+```
+initialize.bat
+```
+Lo script si occupa di: creare il database, importare lo schema, copiare il `.env`, installare le dipendenze PHP (Composer) e le dipendenze frontend (npm).
+
+Dopo `initialize.bat`, apri `backend-laravel\.env` e verifica le credenziali MySQL.
+
+## Avvio sviluppo
+
+```
+start.bat
 ```
 
-### 2. Backend
-```bash
-cd backend
-cp .env.example .env
-# Modifica .env con i tuoi dati
-npm install
-npm run dev
-```
-
-### 3. Frontend
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-### 4. Avvio completo (dalla root)
-```bash
-npm install
-npm run dev
-```
+Apre due terminali (Laravel su `http://localhost:8000`, Vite su `http://localhost:5173`) e il browser.
 
 ## Credenziali default
 - **Admin**: `admin` / `Admin@2024`

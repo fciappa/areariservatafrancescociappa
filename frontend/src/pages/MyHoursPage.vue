@@ -289,12 +289,15 @@ const selectedDates = computed(() => {
   const dates = [];
   for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1))
     if (selectedWeekdays.value.includes(d.getDay()))
-      dates.push(d.toISOString().slice(0, 10));
+      dates.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`);
   return dates;
 });
 
 // ── Helpers ──────────────────────────────────────────────
-function today() { return new Date().toISOString().slice(0, 10); }
+function today() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
 function fmt(v)  { return Number(v).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 function formatAmount(v) { return fmt(v); }
 function formatDate(d) { return new Date(d).toLocaleDateString('it-IT'); }
@@ -414,7 +417,7 @@ function openEdit(h) {
     tariff_id:   h.tariff_id,
     description: h.description ?? '',
   });
-  modal.isNew = false; modal.open = true; modal._id = h.id;
+  modal.isNew = false; modal.open = true; modal._id = h.id; modal.mode = 'single';
 }
 
 function closeModal() { modal.open = false; }
