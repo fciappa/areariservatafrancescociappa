@@ -5,7 +5,7 @@ export default defineConfig({
   plugins: [vue()],
   build: {
     outDir: '../backend-laravel/public',
-    emptyOutDir: false, // non cancella index.php e .htaccess di Laravel
+    emptyOutDir: true,
   },
   server: {
     port: 5173,
