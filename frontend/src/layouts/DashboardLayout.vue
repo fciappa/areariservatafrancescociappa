@@ -20,22 +20,22 @@
 
       <nav class="sidebar-nav">
         <NavLink to="/" icon="📊" label="Dashboard" @click="sidebarOpen = false" />
-        <NavLink to="/riepilogo" icon="📅" label="Riepilogo mensile" @click="sidebarOpen = false" />
+        <NavLink to="/summary" icon="📅" label="Riepilogo mensile" @click="sidebarOpen = false" />
 
         <template v-if="auth.isAdmin">
           <div class="nav-group-label">Gestione</div>
-          <NavLink to="/collaboratori"     icon="👥" label="Collaboratori"      @click="sidebarOpen = false" />
-          <NavLink to="/clienti"           icon="🏢" label="Clienti"            @click="sidebarOpen = false" />
-          <NavLink to="/progetti"          icon="📁" label="Progetti"           @click="sidebarOpen = false" />
-          <NavLink to="/tariffario"        icon="💰" label="Tariffario"         @click="sidebarOpen = false" />
+          <NavLink to="/collaborators" icon="👥" label="Collaboratori"      @click="sidebarOpen = false" />
+          <NavLink to="/clients"       icon="🏢" label="Clienti"            @click="sidebarOpen = false" />
+          <NavLink to="/projects"      icon="📁" label="Progetti"           @click="sidebarOpen = false" />
+          <NavLink to="/tariffs"       icon="💰" label="Tariffario"         @click="sidebarOpen = false" />
 
           <div class="nav-group-label">Ore</div>
-          <NavLink to="/my-hours"           icon="⏱️" label="Le mie ore"         @click="sidebarOpen = false" />
-          <NavLink to="/ore-collaboratori" icon="🕐" label="Ore collaboratori"  @click="sidebarOpen = false" />
+          <NavLink to="/my-hours"      icon="⏱️" label="Le mie ore"         @click="sidebarOpen = false" />
+          <NavLink to="/collab-hours"  icon="🕐" label="Ore collaboratori"  @click="sidebarOpen = false" />
 
           <div class="nav-group-label">Fatturazione</div>
-          <NavLink to="/fatture"           icon="🧾" label="Fatture"            @click="sidebarOpen = false" />
-          <NavLink to="/utenti"            icon="👤" label="Utenti"             @click="sidebarOpen = false" />
+          <NavLink to="/invoices"      icon="🧾" label="Fatture"            @click="sidebarOpen = false" />
+          <NavLink to="/users"         icon="👤" label="Utenti"             @click="sidebarOpen = false" />
         </template>
       </nav>
 

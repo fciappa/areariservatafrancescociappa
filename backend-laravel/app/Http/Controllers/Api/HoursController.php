@@ -17,8 +17,8 @@ class HoursController extends Controller
                 SELECT ch.*, c.first_name, c.last_name,
                        t.name AS tariff_name, t.hourly_rate, t.rate_type, t.tax_inclusive
                 FROM collaborator_hours ch
-                JOIN collaborators c ON c.id = ch.collaborator_id
-                JOIN tariffs t ON t.id = ch.tariff_id
+                LEFT JOIN collaborators c ON c.id = ch.collaborator_id
+                LEFT JOIN tariffs t ON t.id = ch.tariff_id
                 ORDER BY ch.work_date DESC
             ');
         } else {
@@ -90,19 +90,6 @@ class HoursController extends Controller
             'description' => $request->input('description', ''),
         ]);
         return response()->json(['id' => $id], 201);
-    }
-
-    public function updateMy(Request $request, int $id)
-    {
-        DB::table('my_work_hours')->where('id', $id)->update([
-            'client_id'   => $request->input('client_id'),
-            'project_id'  => $request->input('project_id'),
-            'tariff_id'   => $request->input('tariff_id'),
-            'work_date'   => $request->input('work_date'),
-            'hours'       => $request->input('hours'),
-            'description' => $request->input('description', ''),
-        ]);
-        return response()->json(['message' => 'Aggiornato']);
     }
 
     public function updateMy(Request $request, int $id)

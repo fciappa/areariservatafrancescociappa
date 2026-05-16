@@ -192,7 +192,7 @@ const saving        = ref(false);
 const saveError     = ref('');
 const filterCollab  = ref('');
 const filterProject = ref('');
-const filterMonth   = ref(new Date().toISOString().slice(0, 7));
+const filterMonth   = ref('');
 const tariffResolved = ref(false);
 
 const modal = reactive({ open: false, isNew: true, _id: null });

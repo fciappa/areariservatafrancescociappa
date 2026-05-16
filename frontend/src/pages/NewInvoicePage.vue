@@ -5,7 +5,7 @@
         <h2>🧾 Nuova Fattura</h2>
         <p class="page-sub">Simula e crea una nuova fattura</p>
       </div>
-      <RouterLink to="/fatture" class="btn-ghost">← Torna alle fatture</RouterLink>
+      <RouterLink to="/invoices" class="btn-ghost">← Torna alle fatture</RouterLink>
     </div>
 
     <div class="invoice-layout">
@@ -283,7 +283,7 @@ async function saveInvoice() {
   saving.value = true;
   try {
     await api.post('/invoices', payload);
-    router.push('/fatture');
+    router.push('/invoices');
   } catch (err) {
     saveError.value = err.response?.data?.message ?? 'Errore durante il salvataggio.';
   } finally {

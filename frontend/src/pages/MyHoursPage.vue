@@ -355,19 +355,28 @@ watch(() => modal.open, (v) => {
 });
 
 // ── Fetch ────────────────────────────────────────────────
-async function load() {
-  loading.value = true;
+async function loadRefData() {
   try {
-    const [h, c, p, t] = await Promise.all([
-      api.get('/hours/my'),
+    const [c, p, t] = await Promise.all([
       api.get('/clients'),
       api.get('/projects'),
       api.get('/tariffs'),
     ]);
-    hours.value    = h.data;
     clients.value  = c.data.filter(x => x.is_active);
     projects.value = p.data.filter(x => x.is_active);
     tariffs.value  = t.data;
+  } catch (err) {
+    console.error('Errore caricamento dati di riferimento:', err);
+  }
+}
+
+async function load() {
+  loading.value = true;
+  try {
+    const h = await api.get('/hours/my');
+    hours.value = h.data;
+  } catch (err) {
+    console.error('Errore caricamento ore:', err);
   } finally {
     loading.value = false;
   }
@@ -452,7 +461,7 @@ async function remove(h) {
   await load();
 }
 
-onMounted(load);
+onMounted(() => { loadRefData(); load(); });
 </script>
 
 <style scoped>

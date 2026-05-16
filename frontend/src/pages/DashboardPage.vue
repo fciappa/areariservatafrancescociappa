@@ -28,7 +28,7 @@
         <section class="card">
           <div class="card-header">
             <h3>🧾 Ultime fatture</h3>
-            <RouterLink to="/fatture" class="card-link">Vedi tutte →</RouterLink>
+            <RouterLink to="/invoices" class="card-link">Vedi tutte →</RouterLink>
           </div>
           <div v-if="loading" class="skeleton-list">
             <div v-for="i in 4" :key="i" class="skeleton-row" />
@@ -81,7 +81,7 @@
       <section class="card">
         <div class="card-header">
           <h3>🕐 Le mie ore questo mese</h3>
-          <RouterLink to="/riepilogo" class="card-link">Riepilogo →</RouterLink>
+          <RouterLink to="/summary" class="card-link">Riepilogo →</RouterLink>
         </div>
         <div v-if="loading" class="skeleton-list">
           <div v-for="i in 4" :key="i" class="skeleton-row" />

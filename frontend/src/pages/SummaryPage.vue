@@ -48,7 +48,7 @@
         <section class="card">
           <div class="card-header">
             <h3>🧾 Fatture del mese</h3>
-            <RouterLink to="/fatture" class="card-link">Vedi tutte →</RouterLink>
+            <RouterLink to="/invoices" class="card-link">Vedi tutte →</RouterLink>
           </div>
           <div v-if="loading" class="skeleton-list"><div v-for="i in 3" :key="i" class="skeleton-row" /></div>
           <div v-else-if="!adminData.invoices.length" class="empty-small">Nessuna fattura questo mese.</div>
@@ -69,7 +69,7 @@
         <section class="card">
           <div class="card-header">
             <h3>👥 Ore per collaboratore</h3>
-            <RouterLink to="/ore-collaboratori" class="card-link">Gestisci →</RouterLink>
+            <RouterLink to="/collab-hours" class="card-link">Gestisci →</RouterLink>
           </div>
           <div v-if="loading" class="skeleton-list"><div v-for="i in 3" :key="i" class="skeleton-row" /></div>
           <div v-else-if="!adminData.collabSummary.length" class="empty-small">Nessuna ora registrata.</div>

@@ -5,7 +5,7 @@
         <h2>🧾 Fatture</h2>
         <p class="page-sub">Storico e gestione fatture simulate</p>
       </div>
-      <RouterLink to="/fatture/nuova" class="btn-primary">+ Nuova fattura</RouterLink>
+      <RouterLink to="/invoices/new" class="btn-primary">+ Nuova fattura</RouterLink>
     </div>
 
     <!-- Filtri -->
@@ -53,7 +53,7 @@
     <div v-else-if="!filtered.length" class="empty-state">
       <span>🧾</span>
       <p>Nessuna fattura trovata.</p>
-      <RouterLink to="/fatture/nuova" class="btn-primary" style="margin-top:1rem">Crea la prima fattura</RouterLink>
+      <RouterLink to="/invoices/new" class="btn-primary" style="margin-top:1rem">Crea la prima fattura</RouterLink>
     </div>
 
     <!-- Tabella -->
