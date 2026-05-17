@@ -56,7 +56,7 @@
             <th>Collaboratore</th>
             <th>Tariffa</th>
             <th>Ore</th>
-            <th>Tariffa</th>
+            <th>€/ora</th>
             <th>Lordo</th>
             <th>4%</th>
             <th>Descrizione</th>
@@ -65,27 +65,28 @@
         </thead>
         <tbody>
           <tr v-for="h in filtered" :key="h.id">
-            <td class="mono">{{ formatDate(h.work_date) }}</td>
-            <td class="fw">
+            <td class="mono" data-label="Data">{{ formatDate(h.work_date) }}</td>
+            <td class="fw" data-label="Collaboratore">
               <span class="avatar">{{ initials(h) }}</span>
               {{ h.first_name }} {{ h.last_name }}
             </td>
-            <td>
+            <td data-label="Tariffa">
               <span class="tariff-name">{{ h.tariff_name }}</span>
               <span :class="['pill', h.tax_inclusive ? 'in' : 'ex']">
                 {{ h.tax_inclusive ? '4% incl.' : '4% escl.' }}
               </span>
               <span class="pill rate-pill">{{ h.rate_type === 'daily' ? '📅 giornaliera' : '⏱️ oraria' }}</span>
             </td>
-            <td class="mono">{{ h.hours }}h</td>
-            <td class="mono">
+            <td class="mono" data-label="Ore">{{ h.hours }}h</td>
+            <td class="mono" data-label="€/ora">
               € {{ formatAmount(h.hourly_rate) }}
               <span class="rate-unit-small">{{ h.rate_type === 'daily' ? '/g' : '/h' }}</span>
             </td>
-            <td class="mono green">€ {{ formatAmount(calcGross(h)) }}</td>
-            <td class="mono muted">€ {{ formatAmount(calcTax(h)) }}</td>
-            <td class="desc">{{ h.description || '—' }}</td>
+            <td class="mono green" data-label="Lordo">€ {{ formatAmount(calcGross(h)) }}</td>
+            <td class="mono muted" data-label="4%">€ {{ formatAmount(calcTax(h)) }}</td>
+            <td class="desc" data-label="Note">{{ h.description || '—' }}</td>
             <td class="actions">
+              <button class="btn-icon" title="Duplica" @click="openDuplicate(h)">📋</button>
               <button class="btn-icon" title="Modifica" @click="openEdit(h)">✏️</button>
               <button class="btn-icon" title="Elimina" @click="remove(h)">🗑️</button>
             </td>
@@ -290,6 +291,19 @@ async function load() {
 
 function openNew() { resetForm(); modal.isNew = true; modal.open = true; modal._id = null; }
 
+function openDuplicate(h) {
+  resetForm();
+  Object.assign(form, {
+    work_date:       today(),
+    hours:           h.hours,
+    collaborator_id: h.collaborator_id,
+    project_id:      h.project_id ?? '',
+    tariff_id:       h.tariff_id,
+    description:     h.description ?? '',
+  });
+  modal.isNew = true; modal.open = true; modal._id = null;
+}
+
 function openEdit(h) {
   resetForm();
   Object.assign(form, {
@@ -347,7 +361,7 @@ onMounted(load);
 .table-wrapper { background: #fff; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); overflow-x: auto; }
 .data-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
 .data-table th { text-align: left; padding: 0.75rem 0.75rem; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; border-bottom: 1px solid #e5e7eb; background: #f9fafb; }
-.data-table td { padding: 0.65rem 0.75rem; border-bottom: 1px solid #f3f4f6; color: #374151; vertical-align: middle; }
+.data-table td { padding: 0.65rem 0.75rem; border-bottom: 1px solid #f3f4f6; color: #374151; vertical-align: top; }
 .data-table tbody tr:last-child td { border-bottom: none; }
 .data-table tbody tr:hover td { background: #f9fafb; }
 
@@ -361,6 +375,8 @@ onMounted(load);
 
 .tariff-name { display: block; font-size: 0.8rem; color: #374151; }
 .pill { display: inline-block; padding: 0.1rem 0.4rem; border-radius: 9999px; font-size: 0.68rem; font-weight: 600; margin-top: 0.125rem; }
+.pill.in { background: #d1fae5; color: #065f46; }
+.pill.ex { background: #dbeafe; color: #1e40af; }
 .pill.rate-pill { background: #f3f4f6; color: #374151; margin-top: 0.125rem; }
 .rate-unit-small { font-size: 0.75rem; color: #9ca3af; }
 
@@ -410,4 +426,57 @@ onMounted(load);
 .empty-state span { font-size: 2.5rem; display: block; margin-bottom: 0.75rem; }
 
 @media (max-width: 768px) { .page { padding: 1rem; } }
+
+/* ── Mobile card layout ─────────────────────────────────── */
+@media (max-width: 640px) {
+  .page { padding: 0.75rem; }
+  .page-header { margin-bottom: 1rem; }
+  .toolbar { gap: 0.5rem; }
+  .select-input { flex: 1; min-width: 0; }
+
+  .table-wrapper { overflow-x: unset; background: transparent; box-shadow: none; border-radius: 0; }
+  .data-table, .data-table tbody { display: block; }
+  .data-table thead { display: none; }
+
+  .data-table tbody tr {
+    display: block;
+    background: #fff;
+    border-radius: 10px;
+    margin-bottom: 0.625rem;
+    padding: 0.75rem 1rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.07);
+  }
+  .data-table tbody tr:hover td { background: transparent; }
+
+  .data-table td {
+    display: flex;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 0.25rem 0.5rem;
+    padding: 0.3rem 0;
+    border-bottom: none;
+    font-size: 0.875rem;
+  }
+  .data-table td::before {
+    content: attr(data-label);
+    min-width: 4.5rem;
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #9ca3af;
+    flex-shrink: 0;
+    padding-top: 0.15rem;
+  }
+  .data-table td.actions {
+    display: flex;
+    justify-content: flex-end;
+    flex-wrap: nowrap;
+    padding-top: 0.625rem;
+    margin-top: 0.25rem;
+    border-top: 1px solid #f3f4f6;
+  }
+  .data-table td.actions::before { display: none; }
+  .desc { max-width: none; white-space: normal; }
+}
 </style>

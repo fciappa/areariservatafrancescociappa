@@ -61,7 +61,7 @@
             <th>Cliente</th>
             <th>Tariffa</th>
             <th>Ore</th>
-            <th>Tariffa</th>
+            <th>€/ora</th>
             <th>Lordo</th>
             <th>4%</th>
             <th>Descrizione</th>
@@ -70,23 +70,23 @@
         </thead>
         <tbody>
           <tr v-for="h in filtered" :key="h.id">
-            <td class="mono">{{ formatDate(h.work_date) }}</td>
-            <td class="fw">{{ h.project_name || h.company_name }}</td>
-            <td>
+            <td class="mono" data-label="Data">{{ formatDate(h.work_date) }}</td>
+            <td class="fw" data-label="Cliente">{{ h.project_name || h.company_name }}</td>
+            <td data-label="Tariffa">
               <span class="tariff-name">{{ h.tariff_name }}</span>
               <span :class="['pill', h.tax_inclusive ? 'in' : 'ex']">
                 {{ h.tax_inclusive ? '4% incl.' : '4% escl.' }}
               </span>
               <span class="pill rate-pill">{{ h.rate_type === 'daily' ? '📅 giornaliera' : '⏱️ oraria' }}</span>
             </td>
-            <td class="mono">{{ h.hours }}h</td>
-            <td class="mono">
+            <td class="mono" data-label="Ore">{{ h.hours }}h</td>
+            <td class="mono" data-label="€/ora">
               € {{ formatAmount(h.hourly_rate) }}
               <span class="rate-unit-small">{{ h.rate_type === 'daily' ? '/g' : '/h' }}</span>
             </td>
-            <td class="mono green">€ {{ formatAmount(calcGross(h)) }}</td>
-            <td class="mono muted">€ {{ formatAmount(calcTax(h)) }}</td>
-            <td class="desc">{{ h.description || '—' }}</td>
+            <td class="mono green" data-label="Lordo">€ {{ formatAmount(calcGross(h)) }}</td>
+            <td class="mono muted" data-label="4%">€ {{ formatAmount(calcTax(h)) }}</td>
+            <td class="desc" data-label="Note">{{ h.description || '—' }}</td>
             <td class="actions">
               <button class="btn-icon" title="Duplica" @click="openDuplicate(h)">📋</button>
               <button class="btn-icon" title="Modifica" @click="openEdit(h)">✏️</button>
@@ -516,7 +516,7 @@ onMounted(() => { loadRefData(); load(); });
   font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
   letter-spacing: 0.05em; color: #6b7280; border-bottom: 1px solid #e5e7eb; background: #f9fafb;
 }
-.data-table td { padding: 0.65rem 0.75rem; border-bottom: 1px solid #f3f4f6; color: #374151; vertical-align: middle; }
+.data-table td { padding: 0.65rem 0.75rem; border-bottom: 1px solid #f3f4f6; color: #374151; vertical-align: top; }
 .data-table tbody tr:last-child td { border-bottom: none; }
 .data-table tbody tr:hover td { background: #f9fafb; }
 
@@ -597,6 +597,60 @@ onMounted(() => { loadRefData(); load(); });
   background: transparent; color: #6b7280; transition: all 0.15s;
 }
 .mode-tab.active { background: #fff; color: #0f3460; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+
+/* ── Mobile card layout ─────────────────────────────────── */
+@media (max-width: 640px) {
+  .page { padding: 0.75rem; }
+  .page-header { margin-bottom: 1rem; }
+  .toolbar { gap: 0.5rem; }
+  .select-input { flex: 1; min-width: 0; }
+  .header-actions { flex-wrap: wrap; }
+
+  .table-wrapper { overflow-x: unset; background: transparent; box-shadow: none; border-radius: 0; }
+  .data-table, .data-table tbody { display: block; }
+  .data-table thead { display: none; }
+
+  .data-table tbody tr {
+    display: block;
+    background: #fff;
+    border-radius: 10px;
+    margin-bottom: 0.625rem;
+    padding: 0.75rem 1rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.07);
+  }
+  .data-table tbody tr:hover td { background: transparent; }
+
+  .data-table td {
+    display: flex;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 0.25rem 0.5rem;
+    padding: 0.3rem 0;
+    border-bottom: none;
+    font-size: 0.875rem;
+  }
+  .data-table td::before {
+    content: attr(data-label);
+    min-width: 4.5rem;
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #9ca3af;
+    flex-shrink: 0;
+    padding-top: 0.15rem;
+  }
+  .data-table td.actions {
+    display: flex;
+    justify-content: flex-end;
+    flex-wrap: nowrap;
+    padding-top: 0.625rem;
+    margin-top: 0.25rem;
+    border-top: 1px solid #f3f4f6;
+  }
+  .data-table td.actions::before { display: none; }
+  .desc { max-width: none; white-space: normal; }
+}
 
 /* ── Weekday grid ───────────────────────────────────────── */
 .weekday-grid { display: flex; gap: 0.375rem; flex-wrap: wrap; margin-top: 0.375rem; }
