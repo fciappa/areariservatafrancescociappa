@@ -50,7 +50,9 @@
         <div class="user-info">
           <span class="user-avatar">{{ userInitials }}</span>
           <div>
-            <div class="user-name">{{ auth.user?.username }}</div>
+            <div class="user-name">
+              {{ (!auth.isAdmin && auth.user?.first_name) ? `${auth.user.first_name} ${auth.user.last_name}` : auth.user?.username }}
+            </div>
             <div class="user-role">{{ auth.user?.role === 'admin' ? 'Amministratore' : 'Collaboratore' }}</div>
           </div>
         </div>
@@ -76,8 +78,10 @@ const router      = useRouter();
 const sidebarOpen = ref(false);
 
 const userInitials = computed(() => {
-  const u = auth.user?.username ?? '?';
-  return u.slice(0, 2).toUpperCase();
+  if (!auth.isAdmin && auth.user?.first_name) {
+    return ((auth.user.first_name[0] ?? '') + (auth.user.last_name?.[0] ?? '')).toUpperCase();
+  }
+  return (auth.user?.username ?? '?').slice(0, 2).toUpperCase();
 });
 
 async function handleLogout() {

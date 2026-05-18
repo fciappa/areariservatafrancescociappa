@@ -55,6 +55,16 @@ class AuthController extends Controller
             return response()->json(['message' => 'Credenziali non valide'], 401);
         }
 
+        $firstName = null;
+        $lastName  = null;
+        if ($user->collaborator_id) {
+            $collab = DB::select('SELECT first_name, last_name FROM collaborators WHERE id = ? LIMIT 1', [$user->collaborator_id]);
+            if (!empty($collab)) {
+                $firstName = $collab[0]->first_name;
+                $lastName  = $collab[0]->last_name;
+            }
+        }
+
         $accessToken  = $this->signAccess($user);
         $refreshToken = $this->signRefresh($user->id);
 
@@ -70,10 +80,12 @@ class AuthController extends Controller
             'accessToken'  => $accessToken,
             'refreshToken' => $refreshToken,
             'user'         => [
-                'id'             => $user->id,
-                'username'       => $user->username,
-                'role'           => $user->role,
+                'id'              => $user->id,
+                'username'        => $user->username,
+                'role'            => $user->role,
                 'collaborator_id' => $user->collaborator_id,
+                'first_name'      => $firstName,
+                'last_name'       => $lastName,
             ],
         ]);
     }
