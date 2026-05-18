@@ -1,3 +1,10 @@
+<IfModule mod_headers.c>
+    # Il browser rivalida sempre via ETag — 304 se invariato, 200 se cambiato
+    <FilesMatch "\.(html|js|css)$">
+        Header set Cache-Control "no-cache, must-revalidate"
+    </FilesMatch>
+</IfModule>
+
 <IfModule mod_rewrite.c>
     RewriteEngine On
 
