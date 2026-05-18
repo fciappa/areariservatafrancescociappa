@@ -171,4 +171,21 @@ class ProjectsController extends Controller
 
         return response()->json(['message' => 'Nessuna tariffa trovata'], 404);
     }
+
+    public function assignedProjects(Request $request)
+    {
+        $user = $request->attributes->get('jwt_user');
+        $rows = DB::select('
+            SELECT p.id, p.name, p.is_active,
+                   t.id AS tariff_id, t.name AS tariff_name,
+                   t.hourly_rate, t.rate_type, t.tax_inclusive
+            FROM projects p
+            JOIN tariff_assignments ta ON ta.project_id = p.id
+                AND ta.collaborator_id = ?
+            LEFT JOIN tariffs t ON t.id = ta.tariff_id
+            WHERE p.is_active = 1
+            ORDER BY p.name
+        ', [$user->collaborator_id]);
+        return response()->json($rows);
+    }
 }

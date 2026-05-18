@@ -24,6 +24,7 @@
 
         <template v-if="!auth.isAdmin">
           <div class="nav-group-label">Le mie attività</div>
+          <NavLink to="/collab-my-hours" icon="⏱️" label="Le mie ore" @click="sidebarOpen = false" />
           <NavLink to="/my-invoices" icon="📄" label="Le mie fatture" @click="sidebarOpen = false" />
         </template>
 

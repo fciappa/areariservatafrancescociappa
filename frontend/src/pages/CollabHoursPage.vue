@@ -64,8 +64,11 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="h in filtered" :key="h.id" :class="{ 'row-invoiced': h.invoiced_at }">
-            <td class="mono" data-label="Data">{{ formatDate(h.work_date) }}</td>
+          <tr v-for="h in filtered" :key="h.id" :class="{ 'row-invoiced': h.invoiced_at, 'row-pending': h.status === 'pending' }">
+            <td class="mono" data-label="Data">
+              {{ formatDate(h.work_date) }}
+              <span v-if="h.status === 'pending'" class="pending-badge">⏳ In attesa</span>
+            </td>
             <td class="fw" data-label="Collaboratore">
               <span class="avatar">{{ initials(h) }}</span>
               {{ h.first_name }} {{ h.last_name }}
@@ -87,9 +90,15 @@
             <td class="desc" data-label="Note">{{ h.description || '—' }}</td>
             <td class="actions">
               <span v-if="h.invoiced_at" class="invoiced-icon" :title="`Fatturata il ${formatDate(h.invoiced_at)}`">🧾</span>
-              <button class="btn-icon" title="Duplica" @click="openDuplicate(h)">📋</button>
-              <button class="btn-icon" title="Modifica" @click="openEdit(h)">✏️</button>
-              <button class="btn-icon" title="Elimina" @click="remove(h)">🗑️</button>
+              <template v-if="h.status === 'pending'">
+                <button class="btn-icon approve" title="Approva" @click="approve(h)" :disabled="actioning[h.id]">✅</button>
+                <button class="btn-icon reject"  title="Rifiuta"  @click="reject(h)"  :disabled="actioning[h.id]">❌</button>
+              </template>
+              <template v-else>
+                <button class="btn-icon" title="Duplica" @click="openDuplicate(h)">📋</button>
+                <button class="btn-icon" title="Modifica" @click="openEdit(h)">✏️</button>
+                <button class="btn-icon" title="Elimina" @click="remove(h)">🗑️</button>
+              </template>
             </td>
           </tr>
         </tbody>
@@ -197,6 +206,7 @@ const filterProject = ref('');
 const filterMonth   = ref('');
 const tariffResolved = ref(false);
 
+const actioning = reactive({});
 const modal = reactive({ open: false, isNew: true, _id: null });
 const form  = reactive({ work_date: today(), hours: '', collaborator_id: '', project_id: '', tariff_id: '', description: '' });
 const formErrors = reactive({ work_date: '', hours: '', collaborator_id: '', project_id: '', tariff_id: '' });
@@ -339,6 +349,23 @@ async function remove(h) {
   await load();
 }
 
+async function approve(h) {
+  actioning[h.id] = true;
+  try {
+    await api.put(`/hours/collaborators/${h.id}/approve`);
+    h.status = 'approved';
+  } finally { actioning[h.id] = false; }
+}
+
+async function reject(h) {
+  actioning[h.id] = true;
+  try {
+    await api.put(`/hours/collaborators/${h.id}/reject`);
+    h.status = 'rejected';
+    hours.value = hours.value.filter(x => x.id !== h.id);
+  } finally { actioning[h.id] = false; }
+}
+
 onMounted(load);
 </script>
 
@@ -369,7 +396,11 @@ onMounted(load);
 .pill.rate-pill { background: #f3f4f6; color: #374151; margin-top: 0.125rem; }
 .rate-unit-small { font-size: 0.75rem; color: #9ca3af; }
 .row-invoiced td { background: #fefce8 !important; }
-.invoiced-icon { font-size: 1rem; cursor: default; opacity: 0.85; }
+.row-pending td  { background: #fff7ed !important; }
+.invoiced-icon   { font-size: 1rem; cursor: default; opacity: 0.85; }
+.pending-badge   { display: inline-block; margin-left: 0.375rem; font-size: 0.68rem; font-weight: 700; background: #fed7aa; color: #9a3412; border-radius: 9999px; padding: 0.1rem 0.4rem; vertical-align: middle; }
+.btn-icon.approve:hover:not(:disabled) { background: #d1fae5; }
+.btn-icon.reject:hover:not(:disabled)  { background: #fee2e2; }
 
 .modal { max-width: 500px; }
 

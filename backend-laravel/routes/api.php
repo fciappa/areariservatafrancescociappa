@@ -48,6 +48,7 @@ Route::middleware('auth.jwt')->group(function () {
 
     // Projects — NOTE: specific routes BEFORE /{id} to avoid conflicts
     Route::get('/projects/tariff/resolve',    [ProjectsController::class, 'resolveTargetTariff']);
+    Route::get('/projects/assigned',          [ProjectsController::class, 'assignedProjects']);
     Route::get('/projects',                   [ProjectsController::class, 'index']);
     Route::get('/projects/{id}',              [ProjectsController::class, 'show']);
     Route::middleware('admin')->group(function () {
@@ -58,10 +59,14 @@ Route::middleware('auth.jwt')->group(function () {
     });
 
     // Hours
-    Route::get('/hours/collaborators',          [HoursController::class, 'indexCollaborators']);
-    Route::post('/hours/collaborators',         [HoursController::class, 'storeCollaborator']);
-    Route::put('/hours/collaborators/{id}',     [HoursController::class, 'updateCollaborator']);
-    Route::delete('/hours/collaborators/{id}',  [HoursController::class, 'destroyCollaborator']);
+    Route::get('/hours/collaborators',                    [HoursController::class, 'indexCollaborators']);
+    Route::post('/hours/collaborators',                   [HoursController::class, 'storeCollaborator']);
+    Route::put('/hours/collaborators/{id}',               [HoursController::class, 'updateCollaborator']);
+    Route::delete('/hours/collaborators/{id}',            [HoursController::class, 'destroyCollaborator']);
+    Route::middleware('admin')->group(function () {
+        Route::put('/hours/collaborators/{id}/approve',   [HoursController::class, 'approveCollaborator']);
+        Route::put('/hours/collaborators/{id}/reject',    [HoursController::class, 'rejectCollaborator']);
+    });
 
     Route::middleware('admin')->group(function () {
         Route::get('/hours/my/grouped',              [HoursController::class, 'groupedMy']);

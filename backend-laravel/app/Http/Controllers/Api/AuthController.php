@@ -70,9 +70,10 @@ class AuthController extends Controller
             'accessToken'  => $accessToken,
             'refreshToken' => $refreshToken,
             'user'         => [
-                'id'       => $user->id,
-                'username' => $user->username,
-                'role'     => $user->role,
+                'id'             => $user->id,
+                'username'       => $user->username,
+                'role'           => $user->role,
+                'collaborator_id' => $user->collaborator_id,
             ],
         ]);
     }

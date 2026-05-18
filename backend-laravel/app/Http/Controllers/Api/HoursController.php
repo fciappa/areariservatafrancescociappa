@@ -37,37 +37,90 @@ class HoursController extends Controller
 
     public function storeCollaborator(Request $request)
     {
+        $user    = $request->attributes->get('jwt_user');
+        $isAdmin = $user->role === 'admin';
+
         $id = DB::table('collaborator_hours')->insertGetId([
-            'collaborator_id' => $request->input('collaborator_id'),
+            'collaborator_id' => $isAdmin ? $request->input('collaborator_id') : $user->collaborator_id,
             'project_id'      => $request->input('project_id'),
             'tariff_id'       => $request->input('tariff_id'),
             'work_date'       => $request->input('work_date'),
             'hours'           => $request->input('hours'),
             'description'     => $request->input('description', ''),
+            'status'          => $isAdmin ? 'approved' : 'pending',
         ]);
-        Log::info('Hours: ore collaboratore registrate', ['id' => $id, 'collaborator_id' => $request->input('collaborator_id'), 'work_date' => $request->input('work_date'), 'hours' => $request->input('hours')]);
+        Log::info('Hours: ore collaboratore registrate', [
+            'id'             => $id,
+            'collaborator_id' => $isAdmin ? $request->input('collaborator_id') : $user->collaborator_id,
+            'work_date'      => $request->input('work_date'),
+            'hours'          => $request->input('hours'),
+            'status'         => $isAdmin ? 'approved' : 'pending',
+        ]);
         return response()->json(['id' => $id], 201);
     }
 
     public function updateCollaborator(Request $request, int $id)
     {
-        DB::table('collaborator_hours')->where('id', $id)->update([
-            'collaborator_id' => $request->input('collaborator_id'),
-            'project_id'      => $request->input('project_id'),
-            'tariff_id'       => $request->input('tariff_id'),
-            'work_date'       => $request->input('work_date'),
-            'hours'           => $request->input('hours'),
-            'description'     => $request->input('description', ''),
-        ]);
+        $user    = $request->attributes->get('jwt_user');
+        $isAdmin = $user->role === 'admin';
+
+        if (!$isAdmin) {
+            $exists = DB::table('collaborator_hours')
+                ->where('id', $id)
+                ->where('collaborator_id', $user->collaborator_id)
+                ->where('status', 'pending')
+                ->exists();
+            if (!$exists) {
+                return response()->json(['message' => 'Non modificabile'], 403);
+            }
+        }
+
+        $data = [
+            'project_id'  => $request->input('project_id'),
+            'tariff_id'   => $request->input('tariff_id'),
+            'work_date'   => $request->input('work_date'),
+            'hours'       => $request->input('hours'),
+            'description' => $request->input('description', ''),
+        ];
+        if ($isAdmin) {
+            $data['collaborator_id'] = $request->input('collaborator_id');
+        }
+
+        DB::table('collaborator_hours')->where('id', $id)->update($data);
         Log::info('Hours: ore collaboratore aggiornate', ['id' => $id]);
         return response()->json(['message' => 'Aggiornato']);
     }
 
-    public function destroyCollaborator(int $id)
+    public function destroyCollaborator(Request $request, int $id)
     {
-        DB::table('collaborator_hours')->where('id', $id)->delete();
+        $user    = $request->attributes->get('jwt_user');
+        $isAdmin = $user->role === 'admin';
+
+        $query = DB::table('collaborator_hours')->where('id', $id);
+        if (!$isAdmin) {
+            $query->where('collaborator_id', $user->collaborator_id)
+                  ->where('status', 'pending');
+        }
+        $deleted = $query->delete();
+        if (!$deleted) {
+            return response()->json(['message' => 'Non eliminabile'], 403);
+        }
         Log::info('Hours: ore collaboratore eliminate', ['id' => $id]);
         return response()->json(['message' => 'Eliminato']);
+    }
+
+    public function approveCollaborator(int $id)
+    {
+        DB::table('collaborator_hours')->where('id', $id)->update(['status' => 'approved']);
+        Log::info('Hours: ora collaboratore approvata', ['id' => $id]);
+        return response()->json(['message' => 'Approvata']);
+    }
+
+    public function rejectCollaborator(int $id)
+    {
+        DB::table('collaborator_hours')->where('id', $id)->update(['status' => 'rejected']);
+        Log::info('Hours: ora collaboratore rifiutata', ['id' => $id]);
+        return response()->json(['message' => 'Rifiutata']);
     }
 
     public function groupedMy(Request $request)
@@ -151,7 +204,7 @@ class HoursController extends Controller
             LEFT JOIN projects p  ON p.id = ch.project_id
         ';
         $params = [];
-        $where  = [];
+        $where  = ["ch.status = 'approved'"];
 
         if ($request->filled('collaborator_id')) {
             $where[]  = 'ch.collaborator_id = ?';
