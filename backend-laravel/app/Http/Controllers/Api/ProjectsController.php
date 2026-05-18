@@ -175,17 +175,26 @@ class ProjectsController extends Controller
     public function assignedProjects(Request $request)
     {
         $user = $request->attributes->get('jwt_user');
+        $cid  = $user->collaborator_id;
+
+        // Mirror resolveTargetTariff priority: collaborator-specific > generic project > default
         $rows = DB::select('
             SELECT p.id, p.name, p.is_active,
-                   t.id AS tariff_id, t.name AS tariff_name,
-                   t.hourly_rate, t.rate_type, t.tax_inclusive
+                   COALESCE(ts.id,       tg.id,       td.id)         AS tariff_id,
+                   COALESCE(ts.name,     tg.name,     td.name)       AS tariff_name,
+                   COALESCE(ts.hourly_rate, tg.hourly_rate, td.hourly_rate) AS hourly_rate,
+                   COALESCE(ts.rate_type,   tg.rate_type,   td.rate_type)   AS rate_type,
+                   COALESCE(ts.tax_inclusive, tg.tax_inclusive, td.tax_inclusive) AS tax_inclusive
             FROM projects p
-            JOIN tariff_assignments ta ON ta.project_id = p.id
-                AND ta.collaborator_id = ?
-            LEFT JOIN tariffs t ON t.id = ta.tariff_id
+            LEFT JOIN tariff_assignments ta_s ON ta_s.project_id = p.id AND ta_s.collaborator_id = ?
+            LEFT JOIN tariffs ts ON ts.id = ta_s.tariff_id
+            LEFT JOIN tariff_assignments ta_g ON ta_g.project_id = p.id AND ta_g.collaborator_id IS NULL
+            LEFT JOIN tariffs tg ON tg.id = ta_g.tariff_id
+            LEFT JOIN tariffs td ON td.is_default = TRUE
             WHERE p.is_active = 1
+              AND (ta_s.id IS NOT NULL OR ta_g.id IS NOT NULL)
             ORDER BY p.name
-        ', [$user->collaborator_id]);
+        ', [$cid]);
         return response()->json($rows);
     }
 }
