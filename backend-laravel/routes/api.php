@@ -86,6 +86,11 @@ Route::middleware('auth.jwt')->group(function () {
         Route::put('/invoices/{id}/status',      [InvoicesController::class, 'updateStatus']);
     });
 
+    // Collab Invoices — rotte collaboratore (senza admin) — PRIMA del gruppo admin
+    Route::get('/collab-invoices/mine',          [CollabInvoicesController::class, 'myInvoices']);
+    Route::get('/collab-invoices/mine/{id}',     [CollabInvoicesController::class, 'myInvoiceDetail']);
+    Route::put('/collab-invoices/mine/{id}/paid',[CollabInvoicesController::class, 'markPaid']);
+
     // Collab Invoices (admin only) — proforma invoices for collaborators
     Route::middleware('admin')->group(function () {
         Route::get('/collab-invoices',               [CollabInvoicesController::class, 'index']);

@@ -113,10 +113,11 @@ class InvoicesController extends Controller
                 'notes'          => $request->input('notes'),
             ]);
 
+            $allWorkHourIds = [];
             foreach ($items as $item) {
                 DB::table('invoice_items')->insert([
                     'invoice_id'    => $invoiceId,
-                    'work_hour_id'  => $item['work_hour_id'] ?? null,
+                    'work_hour_id'  => null,
                     'description'   => $item['description'] ?? '',
                     'tariff_id'     => $item['tariff_id'],
                     'hours'         => $item['hours'],
@@ -124,6 +125,15 @@ class InvoicesController extends Controller
                     'tax_inclusive' => $item['tax_inclusive'] ?? false,
                     'line_total'    => $item['line_total'],
                 ]);
+                if (!empty($item['work_hour_ids']) && \is_array($item['work_hour_ids'])) {
+                    $allWorkHourIds = array_merge($allWorkHourIds, $item['work_hour_ids']);
+                }
+            }
+
+            if ($allWorkHourIds) {
+                DB::table('my_work_hours')
+                    ->whereIn('id', $allWorkHourIds)
+                    ->update(['invoiced_at' => now()]);
             }
         });
 

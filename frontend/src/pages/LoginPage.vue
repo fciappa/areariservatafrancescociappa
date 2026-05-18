@@ -160,18 +160,6 @@ async function handleLogin() {
   gap: 1.25rem;
 }
 
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: 0.375rem;
-}
-
-.field label {
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: #374151;
-}
-
 .field input {
   padding: 0.625rem 0.875rem;
   border: 1.5px solid #d1d5db;
@@ -201,11 +189,6 @@ async function handleLogin() {
   box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
 }
 
-.field-error {
-  font-size: 0.8rem;
-  color: #ef4444;
-}
-
 /* ── Password toggle ───────────────────────────────────── */
 .password-wrapper {
   position: relative;
@@ -232,17 +215,6 @@ async function handleLogin() {
 }
 
 .toggle-password:hover { color: #374151; }
-
-/* ── Alert ─────────────────────────────────────────────── */
-.alert-error {
-  background: #fef2f2;
-  border: 1px solid #fecaca;
-  border-radius: 8px;
-  color: #b91c1c;
-  padding: 0.75rem 1rem;
-  font-size: 0.875rem;
-  text-align: center;
-}
 
 /* ── Button ────────────────────────────────────────────── */
 .btn-login {
@@ -275,21 +247,6 @@ async function handleLogin() {
 .btn-login:disabled {
   opacity: 0.65;
   cursor: not-allowed;
-}
-
-/* ── Spinner ───────────────────────────────────────────── */
-.spinner {
-  width: 1rem;
-  height: 1rem;
-  border: 2px solid rgba(255, 255, 255, 0.35);
-  border-top-color: #fff;
-  border-radius: 50%;
-  animation: spin 0.7s linear infinite;
-  flex-shrink: 0;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
 }
 
 /* ── Responsive ────────────────────────────────────────── */

@@ -22,6 +22,11 @@
         <NavLink to="/" icon="📊" label="Dashboard" @click="sidebarOpen = false" />
         <NavLink to="/summary" icon="📅" label="Riepilogo mensile" @click="sidebarOpen = false" />
 
+        <template v-if="!auth.isAdmin">
+          <div class="nav-group-label">Le mie attività</div>
+          <NavLink to="/my-invoices" icon="📄" label="Le mie fatture" @click="sidebarOpen = false" />
+        </template>
+
         <template v-if="auth.isAdmin">
           <div class="nav-group-label">Gestione</div>
           <NavLink to="/collaborators" icon="👥" label="Collaboratori"      @click="sidebarOpen = false" />

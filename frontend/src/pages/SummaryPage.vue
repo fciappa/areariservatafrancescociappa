@@ -113,7 +113,7 @@
     <!-- ── VISTA COLLABORATORE ─────────────────────────── -->
     <template v-else>
       <div v-if="loading" class="kpi-grid">
-        <div v-for="i in 2" :key="i" class="kpi-skeleton" />
+        <div v-for="i in 3" :key="i" class="kpi-skeleton" />
       </div>
       <div v-else class="kpi-grid">
         <div class="kpi-card blue">
@@ -122,11 +122,17 @@
           <div class="kpi-label">Ore lavorate</div>
           <div class="kpi-sub">{{ monthLabel }}</div>
         </div>
-        <div class="kpi-card green">
+        <div class="kpi-card orange">
           <div class="kpi-icon">💶</div>
-          <div class="kpi-value mono">€ {{ fmt(collabData.totalGross) }}</div>
+          <div class="kpi-value mono">€ {{ fmt(collabData.pendingGross) }}</div>
           <div class="kpi-label">Da fatturare (lordo)</div>
-          <div class="kpi-sub">di cui 4%: € {{ fmt(collabData.totalTax) }}</div>
+          <div class="kpi-sub">di cui 4%: € {{ fmt(collabData.pendingTax) }}</div>
+        </div>
+        <div class="kpi-card green">
+          <div class="kpi-icon">🧾</div>
+          <div class="kpi-value mono">€ {{ fmt(collabData.invoicedGross) }}</div>
+          <div class="kpi-label">Già fatturate</div>
+          <div class="kpi-sub">ore incluse in proforma</div>
         </div>
       </div>
 
@@ -137,15 +143,18 @@
         <div v-if="loading" class="skeleton-list"><div v-for="i in 5" :key="i" class="skeleton-row" /></div>
         <div v-else-if="!collabData.hours.length" class="empty-small">Nessuna ora registrata questo mese.</div>
         <table v-else class="mini-table">
-          <thead><tr><th>Data</th><th>Ore</th><th>Tariffa</th><th>€/h</th><th>Lordo</th><th>4%</th></tr></thead>
+          <thead><tr><th>Data</th><th>Ore</th><th>Tariffa</th><th>€/h</th><th>Lordo</th><th>4%</th><th></th></tr></thead>
           <tbody>
-            <tr v-for="h in collabData.hours" :key="h.id">
+            <tr v-for="h in collabData.hours" :key="h.id" :class="{ 'row-invoiced': h.invoiced_at }">
               <td class="mono">{{ formatDate(h.work_date) }}</td>
               <td class="mono">{{ h.hours }}h</td>
               <td>{{ h.tariff_name }}</td>
               <td class="mono">€ {{ fmt(h.hourly_rate) }}</td>
               <td class="mono green">€ {{ fmt(calcGross(h)) }}</td>
               <td class="mono muted">€ {{ fmt(calcTax(h)) }}</td>
+              <td class="invoiced-cell">
+                <span v-if="h.invoiced_at" class="inv-badge" title="Inclusa in proforma">🧾</span>
+              </td>
             </tr>
           </tbody>
           <tfoot>
@@ -154,6 +163,7 @@
               <td colspan="2"></td>
               <td class="mono green fw">€ {{ fmt(collabData.totalGross) }}</td>
               <td class="mono muted">€ {{ fmt(collabData.totalTax) }}</td>
+              <td></td>
             </tr>
           </tfoot>
         </table>
@@ -189,7 +199,13 @@ const adminData = reactive({
 const monthlySummary = ref([]);
 
 // ── Collab data ───────────────────────────────────────────
-const collabData = reactive({ totalHours: 0, totalGross: 0, totalTax: 0, hours: [] });
+const collabData = reactive({
+  totalHours: 0,
+  totalGross: 0, totalTax: 0,
+  pendingGross: 0, pendingTax: 0,
+  invoicedGross: 0,
+  hours: [],
+});
 
 // ── Helpers ──────────────────────────────────────────────
 function fmt(v)      { return Number(v ?? 0).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
@@ -255,10 +271,16 @@ async function loadAdmin() {
 async function loadCollab() {
   const { data } = await api.get('/hours/collaborators');
   const filtered = data.filter(h => h.work_date.slice(0, 7) === selectedMonth.value);
-  collabData.hours      = filtered;
-  collabData.totalHours = filtered.reduce((s, h) => s + parseFloat(h.hours), 0);
-  collabData.totalGross = filtered.reduce((s, h) => s + calcGross(h), 0);
-  collabData.totalTax   = filtered.reduce((s, h) => s + calcTax(h), 0);
+  const pending  = filtered.filter(h => !h.invoiced_at);
+  const invoiced = filtered.filter(h =>  h.invoiced_at);
+
+  collabData.hours         = filtered;
+  collabData.totalHours    = filtered.reduce((s, h) => s + parseFloat(h.hours), 0);
+  collabData.totalGross    = filtered.reduce((s, h) => s + calcGross(h), 0);
+  collabData.totalTax      = filtered.reduce((s, h) => s + calcTax(h), 0);
+  collabData.pendingGross  = pending.reduce((s, h) => s + calcGross(h), 0);
+  collabData.pendingTax    = pending.reduce((s, h) => s + calcTax(h), 0);
+  collabData.invoicedGross = invoiced.reduce((s, h) => s + calcGross(h), 0);
 }
 
 async function load() {
@@ -276,10 +298,6 @@ onMounted(load);
 </script>
 
 <style scoped>
-.page { padding: 2rem; max-width: 1200px; }
-.page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem; gap: 1rem; flex-wrap: wrap; }
-.page-header h2 { font-size: 1.5rem; font-weight: 700; color: #111827; }
-.page-sub { font-size: 0.875rem; color: #6b7280; margin-top: 0.25rem; }
 
 .month-picker { padding: 0.5rem 0.875rem; border: 1.5px solid #d1d5db; border-radius: 8px; font-size: 0.9rem; outline: none; background: #fff; color: #374151; }
 .month-picker:focus { border-color: #0f3460; }
@@ -296,14 +314,13 @@ onMounted(load);
 .kpi-label { font-size: 0.8rem; font-weight: 600; color: #374151; margin-top: 0.25rem; }
 .kpi-sub   { font-size: 0.75rem; color: #9ca3af; margin-top: 0.125rem; }
 .kpi-skeleton { height: 120px; border-radius: 12px; background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%); background-size: 200% 100%; animation: shimmer 1.2s infinite; }
-.mono { font-family: 'Courier New', monospace; }
 
 /* ── Two col ────────────────────────────────────────────── */
 .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
 @media (max-width: 900px) { .two-col { grid-template-columns: 1fr; } }
 
 /* ── Card ───────────────────────────────────────────────── */
-.card { background: #fff; border-radius: 12px; padding: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 1rem; }
+.card { margin-bottom: 1rem; }
 .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
 .card-header h3  { font-size: 0.95rem; font-weight: 700; color: #111827; }
 .card-link       { font-size: 0.8rem; color: #0f3460; font-weight: 600; text-decoration: none; }
@@ -317,11 +334,6 @@ onMounted(load);
 .mini-table tbody tr:last-child td { border-bottom: none; }
 .mini-table tfoot td { border-top: 2px solid #e5e7eb; font-weight: 700; padding-top: 0.625rem; }
 
-.fw    { font-weight: 600; color: #111827; }
-.green { color: #059669; font-weight: 600; }
-.muted { color: #9ca3af; }
-
-.badge { display: inline-block; padding: 0.2rem 0.5rem; border-radius: 9999px; font-size: 0.7rem; font-weight: 600; }
 .badge.draft  { background: #f3f4f6; color: #6b7280; }
 .badge.issued { background: #dbeafe; color: #1d4ed8; }
 .badge.paid   { background: #d1fae5; color: #065f46; }
@@ -338,12 +350,9 @@ onMounted(load);
 .chart-bar:hover   { opacity: 0.8; }
 .chart-bar-month   { font-size: 0.68rem; color: #9ca3af; text-align: center; line-height: 1.3; }
 
-/* ── Skeleton ───────────────────────────────────────────── */
-.skeleton-list { display: flex; flex-direction: column; gap: 0.5rem; }
-.skeleton-row  { height: 2.5rem; border-radius: 6px; background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%); background-size: 200% 100%; animation: shimmer 1.2s infinite; }
-@keyframes shimmer { to { background-position: -200% 0; } }
-
 .empty-small { text-align: center; padding: 1.5rem; color: #9ca3af; font-size: 0.875rem; }
 
-@media (max-width: 768px) { .page { padding: 1rem; } }
+.row-invoiced td { background: #fefce8 !important; }
+.invoiced-cell { width: 1.5rem; text-align: center; }
+.inv-badge { font-size: 0.9rem; cursor: default; }
 </style>

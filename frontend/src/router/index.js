@@ -21,6 +21,7 @@ const routes = [
       { path: 'collab-invoices/new',   component: () => import('../pages/NewCollabInvoicePage.vue'), meta: { adminOnly: true } },
       { path: 'users',component: () => import('../pages/UsersPage.vue'),          meta: { adminOnly: true } },
       { path: 'summary',        component: () => import('../pages/SummaryPage.vue') },
+      { path: 'my-invoices',   component: () => import('../pages/MyInvoicesPage.vue') },
     ],
   },
 

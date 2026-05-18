@@ -69,20 +69,22 @@
             </div>
             <p v-if="!form.collaborator_id" class="hp-hint">⚠️ Seleziona prima un collaboratore per filtrare le ore.</p>
             <div v-if="groupedHoursLoading" class="hp-loading">Caricamento…</div>
-            <div v-else-if="!groupedHours.length" class="hp-empty">Nessun risultato.</div>
+            <div v-else-if="groupedHoursError" class="hp-error">⚠️ {{ groupedHoursError }}</div>
+            <div v-else-if="!groupedHours.length && groupedHoursSearched" class="hp-empty">Nessun risultato. Prova con filtri diversi.</div>
+            <div v-else-if="!groupedHours.length" class="hp-empty">Seleziona i filtri e clicca Cerca.</div>
             <table v-else class="hp-table">
               <thead>
-                <tr><th></th><th>Mese</th><th>Progetto</th><th>Tariffa</th><th>Ore</th><th>€/ora</th><th>Lordo</th></tr>
+                <tr><th></th><th>Mese</th><th>Progetto</th><th>Tariffa</th><th>Ore</th><th>Tariffa</th><th>Lordo</th></tr>
               </thead>
               <tbody>
-                <tr v-for="g in groupedHours" :key="`${g.project_id}-${g.tariff_id}-${g.month}`">
+                <tr v-for="g in groupedHours" :key="`${g.project_id}-${g.tariff_id}-${g.month}`" :class="{ 'hp-row-invoiced': g.invoiced_count > 0 }">
                   <td><input type="checkbox" :value="g" v-model="hSelected" /></td>
                   <td class="mono">{{ g.month }}</td>
                   <td>{{ g.project_name || '—' }}</td>
-                  <td>{{ g.tariff_name }}</td>
+                  <td>{{ g.tariff_name }}<span v-if="g.invoiced_count > 0" class="hp-invoiced-badge" title="Già fatturate">🧾</span></td>
                   <td class="mono">{{ g.total_hours }}h</td>
-                  <td class="mono">€ {{ fmt(g.hourly_rate) }}</td>
-                  <td class="mono green">€ {{ fmt(g.hourly_rate * g.total_hours) }}</td>
+                  <td class="mono">€ {{ fmt(g.hourly_rate) }}{{ g.rate_type === 'daily' ? '/g' : '/h' }}</td>
+                  <td class="mono green">€ {{ fmt(grossFromHours(g)) }}</td>
                 </tr>
               </tbody>
             </table>
@@ -212,11 +214,13 @@ const projects      = ref([]);
 const saving        = ref(false);
 const saveError     = ref('');
 
-const hoursPickerOpen     = ref(false);
-const groupedHours        = ref([]);
-const groupedHoursLoading = ref(false);
-const hSelected           = ref([]);
-const hFilter             = reactive({ project_id: '', month: '' });
+const hoursPickerOpen      = ref(false);
+const groupedHours         = ref([]);
+const groupedHoursLoading  = ref(false);
+const groupedHoursError    = ref('');
+const groupedHoursSearched = ref(false);
+const hSelected            = ref([]);
+const hFilter              = reactive({ project_id: '', month: '' });
 
 const form = reactive({
   invoice_number:  '',
@@ -253,9 +257,13 @@ const totals = computed(() => {
 
 function fmt(v) { return Number(v ?? 0).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 function recompute() {}
+function effectiveHourlyRate(g) { return g.rate_type === 'daily' ? g.hourly_rate / 8 : g.hourly_rate; }
+function grossFromHours(g) { return effectiveHourlyRate(g) * g.total_hours; }
 
 async function loadGroupedHours() {
-  groupedHoursLoading.value = true;
+  groupedHoursLoading.value  = true;
+  groupedHoursError.value    = '';
+  groupedHoursSearched.value = false;
   hSelected.value = [];
   try {
     const params = new URLSearchParams();
@@ -264,6 +272,9 @@ async function loadGroupedHours() {
     if (hFilter.month)        params.set('month',            hFilter.month);
     const { data } = await api.get(`/hours/collaborators/grouped?${params}`);
     groupedHours.value = data;
+    groupedHoursSearched.value = true;
+  } catch (err) {
+    groupedHoursError.value = err.response?.data?.message ?? 'Errore durante la ricerca.';
   } finally {
     groupedHoursLoading.value = false;
   }
@@ -282,7 +293,7 @@ function addFromHours() {
       description:      `${g.tariff_name}${projectLabel}${monthLabel}`,
       tariff_id:        g.tariff_id,
       hours:            g.total_hours,
-      hourly_rate:      g.hourly_rate,
+      hourly_rate:      effectiveHourlyRate(g),
       tax_inclusive:    Boolean(g.tax_inclusive),
       line_total:       0,
       _collab_hour_ids: g.collab_hour_ids,
@@ -328,13 +339,13 @@ async function saveInvoice() {
   if (!validate()) return;
 
   const items = form.items.map((item, i) => ({
-    description:     item.description || `Riga ${i + 1}`,
-    tariff_id:       item.tariff_id,
-    hours:           parseFloat(item.hours),
-    hourly_rate:     parseFloat(item.hourly_rate),
-    tax_inclusive:   item.tax_inclusive,
-    line_total:      computed_items.value[i].gross,
-    collab_hour_id:  null,
+    description:      item.description || `Riga ${i + 1}`,
+    tariff_id:        item.tariff_id,
+    hours:            parseFloat(item.hours),
+    hourly_rate:      parseFloat(item.hourly_rate),
+    tax_inclusive:    item.tax_inclusive,
+    line_total:       computed_items.value[i].gross,
+    collab_hour_ids:  item._collab_hour_ids ?? [],
   }));
 
   const payload = {
@@ -369,10 +380,6 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.page { padding: 2rem; max-width: 1200px; }
-.page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem; gap: 1rem; flex-wrap: wrap; }
-.page-header h2 { font-size: 1.5rem; font-weight: 700; color: #111827; }
-.page-sub { font-size: 0.875rem; color: #6b7280; margin-top: 0.25rem; }
 
 .btn-ghost { background: #f3f4f6; color: #374151; border: none; border-radius: 8px; padding: 0.55rem 1rem; font-size: 0.875rem; font-weight: 600; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; }
 .btn-ghost:hover { background: #e5e7eb; }
@@ -389,12 +396,7 @@ onMounted(async () => {
 .form-row-3 { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 0.75rem; margin-bottom: 0.75rem; }
 @media (max-width: 580px) { .form-row, .form-row-3 { grid-template-columns: 1fr; } }
 
-.field { display: flex; flex-direction: column; gap: 0.375rem; margin-bottom: 0.75rem; }
-.field label { font-size: 0.8rem; font-weight: 600; color: #374151; }
-.field input, .field select, .field textarea { padding: 0.5rem 0.75rem; border: 1.5px solid #d1d5db; border-radius: 8px; font-size: 0.9rem; color: #111827; background: #f9fafb; outline: none; transition: border-color 0.2s; font-family: inherit; resize: vertical; }
-.field input:focus, .field select:focus, .field textarea:focus { border-color: #0f3460; background: #fff; box-shadow: 0 0 0 3px rgba(15,52,96,0.1); }
-.field.error input, .field.error select { border-color: #ef4444; }
-.field-error { font-size: 0.78rem; color: #ef4444; }
+.field { margin-bottom: 0.75rem; }
 
 .btn-add-hours { background: #f0fdf4; color: #059669; border: 1px solid #6ee7b7; border-radius: 8px; padding: 0.4rem 0.875rem; font-size: 0.85rem; font-weight: 600; cursor: pointer; }
 .btn-add-hours:hover { background: #dcfce7; }
@@ -407,10 +409,13 @@ onMounted(async () => {
 .btn-ghost-sm:hover { background: #e5e7eb; }
 .hp-hint { font-size: 0.8rem; color: #d97706; margin-bottom: 0.5rem; }
 .hp-loading, .hp-empty { padding: 1rem; text-align: center; color: #9ca3af; font-size: 0.875rem; }
+.hp-error { padding: 1rem; text-align: center; color: #b91c1c; font-size: 0.875rem; background: #fef2f2; border-radius: 6px; }
 .hp-table { width: 100%; border-collapse: collapse; font-size: 0.83rem; margin-bottom: 0.75rem; }
 .hp-table th { text-align: left; padding: 0.5rem 0.5rem; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: #6b7280; border-bottom: 1px solid #e5e7eb; }
 .hp-table td { padding: 0.5rem 0.5rem; border-bottom: 1px solid #f3f4f6; color: #374151; }
 .hp-table tbody tr:hover td { background: #f0fdf4; }
+.hp-row-invoiced td { background: #fefce8; }
+.hp-invoiced-badge { margin-left: 0.3rem; font-size: 0.85rem; cursor: default; }
 .hp-footer { display: flex; justify-content: flex-end; }
 
 .btn-add { background: #eff6ff; color: #1d4ed8; border: 1px solid #93c5fd; border-radius: 8px; padding: 0.4rem 0.875rem; font-size: 0.85rem; font-weight: 600; cursor: pointer; }
@@ -434,9 +439,6 @@ onMounted(async () => {
 .item-preview .mono { color: #059669; }
 
 .form-actions { display: flex; gap: 0.75rem; justify-content: flex-end; flex-wrap: wrap; }
-.btn-primary { display: inline-flex; align-items: center; gap: 0.375rem; background: linear-gradient(135deg, #0f3460, #1a6fb5); color: #fff; border: none; border-radius: 8px; padding: 0.65rem 1.25rem; font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: opacity 0.2s; }
-.btn-primary:hover:not(:disabled) { opacity: 0.9; }
-.btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
 
 .preview-card { background: #fff; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); padding: 1.25rem; position: sticky; top: 1rem; }
 .preview-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
@@ -450,13 +452,7 @@ onMounted(async () => {
 .preview-totals { border-top: 1px solid #e5e7eb; padding-top: 0.75rem; display: flex; flex-direction: column; gap: 0.375rem; }
 .preview-total-row { display: flex; justify-content: space-between; font-size: 0.875rem; color: #374151; }
 .preview-total-row.grand { border-top: 2px solid #e5e7eb; padding-top: 0.5rem; font-weight: 800; font-size: 1.1rem; color: #059669; margin-top: 0.25rem; }
-.mono { font-family: 'Courier New', monospace; }
-.green { color: #059669; font-weight: 600; }
 .preview-note { margin-top: 1rem; font-size: 0.75rem; color: #9ca3af; line-height: 1.4; }
 
-.alert-error { background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; color: #b91c1c; padding: 0.75rem; font-size: 0.875rem; margin-bottom: 0.75rem; }
-.spinner { display: inline-block; width: 0.875rem; height: 0.875rem; border: 2px solid rgba(255,255,255,0.35); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; }
-@keyframes spin { to { transform: rotate(360deg); } }
-
-@media (max-width: 768px) { .page { padding: 1rem; } }
+.alert-error { margin-bottom: 0.75rem; }
 </style>

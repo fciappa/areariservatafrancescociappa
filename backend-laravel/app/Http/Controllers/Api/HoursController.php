@@ -85,7 +85,8 @@ class HoursController extends Controller
                 t.tax_inclusive,
                 DATE_FORMAT(mwh.work_date, \'%Y-%m\') AS month,
                 SUM(mwh.hours) AS total_hours,
-                GROUP_CONCAT(mwh.id) AS work_hour_ids
+                GROUP_CONCAT(mwh.id) AS work_hour_ids,
+                SUM(CASE WHEN mwh.invoiced_at IS NOT NULL THEN 1 ELSE 0 END) AS invoiced_count
             FROM my_work_hours mwh
             JOIN clients cl  ON cl.id  = mwh.client_id
             JOIN tariffs t   ON t.id   = mwh.tariff_id
@@ -111,7 +112,7 @@ class HoursController extends Controller
             $sql .= ' WHERE ' . implode(' AND ', $where);
         }
 
-        $sql .= ' GROUP BY mwh.project_id, mwh.tariff_id, DATE_FORMAT(mwh.work_date, \'%Y-%m\')
+        $sql .= ' GROUP BY mwh.client_id, mwh.project_id, mwh.tariff_id, DATE_FORMAT(mwh.work_date, \'%Y-%m\')
                   ORDER BY month DESC, project_name, tariff_name';
 
         $rows = DB::select($sql, $params);
@@ -142,7 +143,8 @@ class HoursController extends Controller
                 t.tax_inclusive,
                 DATE_FORMAT(ch.work_date, \'%Y-%m\') AS month,
                 SUM(ch.hours) AS total_hours,
-                GROUP_CONCAT(ch.id) AS collab_hour_ids
+                GROUP_CONCAT(ch.id) AS collab_hour_ids,
+                SUM(CASE WHEN ch.invoiced_at IS NOT NULL THEN 1 ELSE 0 END) AS invoiced_count
             FROM collaborator_hours ch
             JOIN collaborators c ON c.id = ch.collaborator_id
             JOIN tariffs t        ON t.id = ch.tariff_id

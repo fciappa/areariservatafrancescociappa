@@ -76,10 +76,11 @@ class CollabInvoicesController extends Controller
                 'notes'           => $request->input('notes'),
             ]);
 
+            $allCollabHourIds = [];
             foreach ($items as $item) {
                 DB::table('collab_invoice_items')->insert([
                     'collab_invoice_id' => $invoiceId,
-                    'collab_hour_id'    => $item['collab_hour_id'] ?? null,
+                    'collab_hour_id'    => null,
                     'description'       => $item['description'] ?? '',
                     'tariff_id'         => $item['tariff_id'],
                     'hours'             => $item['hours'],
@@ -87,6 +88,15 @@ class CollabInvoicesController extends Controller
                     'tax_inclusive'     => $item['tax_inclusive'] ?? false,
                     'line_total'        => $item['line_total'],
                 ]);
+                if (!empty($item['collab_hour_ids']) && \is_array($item['collab_hour_ids'])) {
+                    $allCollabHourIds = array_merge($allCollabHourIds, $item['collab_hour_ids']);
+                }
+            }
+
+            if ($allCollabHourIds) {
+                DB::table('collaborator_hours')
+                    ->whereIn('id', $allCollabHourIds)
+                    ->update(['invoiced_at' => now()]);
             }
         });
 
@@ -101,8 +111,18 @@ class CollabInvoicesController extends Controller
 
     public function updateStatus(Request $request, int $id)
     {
-        DB::table('collab_invoices')->where('id', $id)->update(['status' => $request->input('status')]);
-        Log::info('CollabInvoices: stato aggiornato', ['id' => $id, 'status' => $request->input('status')]);
+        $status = $request->input('status');
+        $update = ['status' => $status];
+
+        if ($status === 'paid') {
+            $inv = DB::table('collab_invoices')->where('id', $id)->first();
+            if ($inv && !$inv->paid_at) {
+                $update['paid_at'] = now()->toDateString();
+            }
+        }
+
+        DB::table('collab_invoices')->where('id', $id)->update($update);
+        Log::info('CollabInvoices: stato aggiornato', ['id' => $id, 'status' => $status]);
         return response()->json(['message' => 'Stato aggiornato']);
     }
 
@@ -111,5 +131,51 @@ class CollabInvoicesController extends Controller
         DB::table('collab_invoices')->where('id', $id)->delete();
         Log::info('CollabInvoices: fattura eliminata', ['id' => $id]);
         return response()->json(['message' => 'Eliminata']);
+    }
+
+    public function myInvoices(Request $request)
+    {
+        $user = $request->attributes->get('jwt_user');
+        $rows = DB::select('
+            SELECT *
+            FROM collab_invoices
+            WHERE collaborator_id = ?
+              AND status IN ("sent", "paid")
+            ORDER BY invoice_date DESC
+        ', [$user->collaborator_id]);
+        return response()->json($rows);
+    }
+
+    public function myInvoiceDetail(Request $request, int $id)
+    {
+        $user = $request->attributes->get('jwt_user');
+        $rows = DB::select(
+            'SELECT * FROM collab_invoices WHERE id = ? AND collaborator_id = ?',
+            [$id, $user->collaborator_id]
+        );
+        if (empty($rows)) {
+            return response()->json(['message' => 'Non trovata'], 404);
+        }
+        $items = DB::select('SELECT * FROM collab_invoice_items WHERE collab_invoice_id = ?', [$id]);
+        return response()->json(array_merge((array) $rows[0], ['items' => $items]));
+    }
+
+    public function markPaid(Request $request, int $id)
+    {
+        $user = $request->attributes->get('jwt_user');
+        $inv  = DB::table('collab_invoices')
+            ->where('id', $id)
+            ->where('collaborator_id', $user->collaborator_id)
+            ->first();
+        if (!$inv) {
+            return response()->json(['message' => 'Non trovata'], 404);
+        }
+        $paidAt = $request->input('paid_at') ?? now()->toDateString();
+        DB::table('collab_invoices')->where('id', $id)->update([
+            'status'  => 'paid',
+            'paid_at' => $paidAt,
+        ]);
+        Log::info('CollabInvoices: collaboratore ha segnato come pagata', ['id' => $id, 'paid_at' => $paidAt]);
+        return response()->json(['message' => 'Segnata come pagata', 'paid_at' => $paidAt]);
     }
 }

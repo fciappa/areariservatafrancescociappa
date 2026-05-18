@@ -78,29 +78,56 @@
 
     <!-- Vista collaboratore -->
     <template v-else>
-      <section class="card">
-        <div class="card-header">
-          <h3>🕐 Le mie ore questo mese</h3>
-          <RouterLink to="/summary" class="card-link">Riepilogo →</RouterLink>
-        </div>
-        <div v-if="loading" class="skeleton-list">
-          <div v-for="i in 4" :key="i" class="skeleton-row" />
-        </div>
-        <div v-else-if="!collabHours.length" class="empty-state">Nessuna ora registrata questo mese.</div>
-        <table v-else class="mini-table">
-          <thead>
-            <tr><th>Data</th><th>Ore</th><th>Tariffa</th><th>Importo</th></tr>
-          </thead>
-          <tbody>
-            <tr v-for="h in collabHours" :key="h.id">
-              <td>{{ formatDate(h.work_date) }}</td>
-              <td class="mono">{{ h.hours }}h</td>
-              <td>{{ h.tariff_name }}</td>
-              <td class="mono amount">€ {{ formatAmount(h.hours * h.hourly_rate) }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </section>
+      <div class="two-col">
+        <section class="card">
+          <div class="card-header">
+            <h3>🕐 Le mie ore questo mese</h3>
+            <RouterLink to="/summary" class="card-link">Riepilogo →</RouterLink>
+          </div>
+          <div v-if="loading" class="skeleton-list">
+            <div v-for="i in 4" :key="i" class="skeleton-row" />
+          </div>
+          <div v-else-if="!collabHours.length" class="empty-state">Nessuna ora registrata questo mese.</div>
+          <table v-else class="mini-table">
+            <thead>
+              <tr><th>Data</th><th>Ore</th><th>Tariffa</th><th>Importo</th></tr>
+            </thead>
+            <tbody>
+              <tr v-for="h in collabHours" :key="h.id">
+                <td>{{ formatDate(h.work_date) }}</td>
+                <td class="mono">{{ h.hours }}h</td>
+                <td>{{ h.tariff_name }}</td>
+                <td class="mono amount">€ {{ formatAmount(h.hours * h.hourly_rate) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section class="card">
+          <div class="card-header">
+            <h3>📄 Le mie fatture proforma</h3>
+            <RouterLink to="/my-invoices" class="card-link">Vedi tutte →</RouterLink>
+          </div>
+          <div v-if="loading" class="skeleton-list">
+            <div v-for="i in 3" :key="i" class="skeleton-row" />
+          </div>
+          <div v-else-if="!collabInvoices.length" class="empty-state">Nessuna fattura ancora.</div>
+          <table v-else class="mini-table">
+            <thead>
+              <tr><th>N°</th><th>Inviata il</th><th>Pagata il</th><th>Totale</th><th>Stato</th></tr>
+            </thead>
+            <tbody>
+              <tr v-for="inv in collabInvoices" :key="inv.id">
+                <td class="mono">{{ inv.invoice_number }}</td>
+                <td>{{ formatDate(inv.invoice_date) }}</td>
+                <td>{{ inv.paid_at ? formatDate(inv.paid_at) : '—' }}</td>
+                <td class="mono amount">€ {{ formatAmount(inv.total) }}</td>
+                <td><span :class="['badge', inv.status]">{{ collabStatusLabel(inv.status) }}</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+      </div>
     </template>
   </div>
 </template>
@@ -118,7 +145,8 @@ const loading = ref(true);
 const invoiceSummary    = ref([]);
 const recentInvoices    = ref([]);
 const myHoursThisMonth  = ref([]);
-const collabHours       = ref([]);
+const collabHours        = ref([]);
+const collabInvoices     = ref([]);
 const collaboratorsCount = ref(0);
 const clientsCount       = ref(0);
 
@@ -182,6 +210,13 @@ const kpiCards = computed(() => {
       sub: 'lordo imposte',
       color: 'green',
     },
+    {
+      icon: '📄',
+      label: 'Fatture in attesa',
+      value: sentInvoicesCount.value,
+      sub: 'da incassare',
+      color: 'orange',
+    },
   ];
 });
 
@@ -197,6 +232,10 @@ const totalCollabAmount = computed(() =>
   collabHours.value.reduce((s, h) => s + parseFloat(h.hours) * parseFloat(h.hourly_rate), 0)
 );
 
+const sentInvoicesCount = computed(() =>
+  collabInvoices.value.filter(i => i.status === 'sent').length
+);
+
 // Helpers
 function formatAmount(v) {
   return Number(v ?? 0).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -208,6 +247,10 @@ function formatDate(d) {
 
 function statusLabel(s) {
   return { draft: 'Bozza', issued: 'Emessa', paid: 'Pagata' }[s] ?? s;
+}
+
+function collabStatusLabel(s) {
+  return { draft: 'Bozza', sent: 'Inviata', paid: 'Pagata' }[s] ?? s;
 }
 
 // Fetch
@@ -241,11 +284,21 @@ async function loadAdmin() {
 }
 
 async function loadCollaborator() {
-  const { data } = await api.get('/hours/collaborators');
-  collabHours.value = data.filter(h => {
-    const d = new Date(h.work_date);
-    return d.getFullYear() === year && d.getMonth() + 1 === month;
-  });
+  const [hours, invoices] = await Promise.allSettled([
+    api.get('/hours/collaborators'),
+    api.get('/collab-invoices/mine'),
+  ]);
+
+  if (hours.status === 'fulfilled') {
+    collabHours.value = hours.value.data.filter(h => {
+      const d = new Date(h.work_date);
+      return d.getFullYear() === year && d.getMonth() + 1 === month;
+    });
+  }
+
+  if (invoices.status === 'fulfilled') {
+    collabInvoices.value = invoices.value.data;
+  }
 }
 
 onMounted(async () => {
@@ -269,16 +322,7 @@ onMounted(async () => {
   margin-bottom: 1.75rem;
 }
 
-.page-header h2 {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: #111827;
-}
-
 .page-sub {
-  font-size: 0.875rem;
-  color: #6b7280;
-  margin-top: 0.25rem;
   text-transform: capitalize;
 }
 
@@ -303,10 +347,6 @@ onMounted(async () => {
 
 /* ── Card ──────────────────────────────────────────────── */
 .card {
-  background: #fff;
-  border-radius: 12px;
-  padding: 1.25rem;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
   margin-bottom: 1rem;
 }
 
@@ -357,38 +397,17 @@ onMounted(async () => {
 }
 
 .mini-table tr:last-child td { border-bottom: none; }
-.mono   { font-family: 'Courier New', monospace; }
 .amount { font-weight: 600; color: #059669; }
 
 /* ── Badge ─────────────────────────────────────────────── */
-.badge {
-  display: inline-block;
-  padding: 0.2rem 0.5rem;
-  border-radius: 9999px;
-  font-size: 0.7rem;
-  font-weight: 600;
-}
-
 .badge.draft   { background: #f3f4f6; color: #6b7280; }
 .badge.issued  { background: #dbeafe; color: #1d4ed8; }
+.badge.sent    { background: #fef3c7; color: #92400e; }
 .badge.paid    { background: #d1fae5; color: #065f46; }
-
-/* ── Skeleton ──────────────────────────────────────────── */
-.skeleton-list { display: flex; flex-direction: column; gap: 0.5rem; }
-.skeleton-row  {
-  height: 2rem;
-  border-radius: 6px;
-  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-  background-size: 200% 100%;
-  animation: shimmer 1.2s infinite;
-}
-@keyframes shimmer { to { background-position: -200% 0; } }
 
 /* ── Empty ─────────────────────────────────────────────── */
 .empty-state {
-  text-align: center;
   padding: 2rem;
-  color: #9ca3af;
   font-size: 0.875rem;
 }
 
