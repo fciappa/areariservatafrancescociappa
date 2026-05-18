@@ -526,7 +526,7 @@ onMounted(() => { loadRefData(); load(); });
 .muted { color: #9ca3af; }
 .desc  { max-width: 180px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #6b7280; font-size: 0.8rem; }
 
-.tariff-name { display: block; font-size: 0.8rem; color: #374151; }
+.tariff-name { display: inline; font-size: 0.8rem; color: #374151; }
 .pill {
   display: inline-block; padding: 0.1rem 0.4rem;
   border-radius: 9999px; font-size: 0.68rem; font-weight: 600; margin-top: 0.125rem;

@@ -10,6 +10,8 @@
   },
   "dependencies": {
     "axios": "^1.7.2",
+    "jspdf": "^4.2.1",
+    "jspdf-autotable": "^5.0.8",
     "pinia": "^2.1.7",
     "vue": "^3.4.27",
     "vue-router": "^4.3.3"

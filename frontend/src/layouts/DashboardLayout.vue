@@ -34,7 +34,8 @@
           <NavLink to="/collab-hours"  icon="🕐" label="Ore collaboratori"  @click="sidebarOpen = false" />
 
           <div class="nav-group-label">Fatturazione</div>
-          <NavLink to="/invoices"      icon="🧾" label="Fatture"            @click="sidebarOpen = false" />
+          <NavLink to="/invoices"        icon="🧾" label="Fatture clienti"        @click="sidebarOpen = false" />
+          <NavLink to="/collab-invoices" icon="📄" label="Fatture collaboratori"  @click="sidebarOpen = false" />
           <NavLink to="/users"         icon="👤" label="Utenti"             @click="sidebarOpen = false" />
         </template>
       </nav>

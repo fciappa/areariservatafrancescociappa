@@ -2,23 +2,23 @@
   <div class="page">
     <div class="page-header">
       <div>
-        <h2>🧾 Nuova Fattura</h2>
-        <p class="page-sub">Simula e crea una nuova fattura</p>
+        <h2>📄 Nuova Fattura Proforma</h2>
+        <p class="page-sub">Fattura proforma da inviare al collaboratore</p>
       </div>
-      <RouterLink to="/invoices" class="btn-ghost">← Torna alle fatture</RouterLink>
+      <RouterLink to="/collab-invoices" class="btn-ghost">← Torna alle proforma</RouterLink>
     </div>
 
     <div class="invoice-layout">
       <!-- Colonna sinistra: form -->
       <div class="invoice-form-col">
 
-        <!-- Dati fattura -->
+        <!-- Dati generali -->
         <section class="card">
           <h3 class="card-title">📋 Dati generali</h3>
           <div class="form-row">
             <div class="field" :class="{ error: errors.invoice_number }">
-              <label>N° Fattura *</label>
-              <input v-model.trim="form.invoice_number" type="text" placeholder="2024/001" />
+              <label>N° Proforma *</label>
+              <input v-model.trim="form.invoice_number" type="text" placeholder="PRO-2025/001" />
               <span v-if="errors.invoice_number" class="field-error">{{ errors.invoice_number }}</span>
             </div>
             <div class="field" :class="{ error: errors.invoice_date }">
@@ -28,28 +28,30 @@
             </div>
           </div>
 
-          <div class="field" :class="{ error: errors.client_id }">
-            <label>Cliente *</label>
-            <select v-model="form.client_id">
-              <option value="">Seleziona cliente…</option>
-              <option v-for="c in clients" :key="c.id" :value="c.id">{{ c.company_name }} — {{ c.vat_number }}</option>
+          <div class="field" :class="{ error: errors.collaborator_id }">
+            <label>Collaboratore *</label>
+            <select v-model="form.collaborator_id" @change="onCollaboratorChange">
+              <option value="">Seleziona collaboratore…</option>
+              <option v-for="c in collaborators" :key="c.id" :value="c.id">
+                {{ c.first_name }} {{ c.last_name }}
+              </option>
             </select>
-            <span v-if="errors.client_id" class="field-error">{{ errors.client_id }}</span>
+            <span v-if="errors.collaborator_id" class="field-error">{{ errors.collaborator_id }}</span>
           </div>
 
           <div class="field">
             <label>Note</label>
-            <textarea v-model="form.notes" rows="2" placeholder="Descrizione servizi prestati…" />
+            <textarea v-model="form.notes" rows="2" placeholder="Riferimento progetto / periodo…" />
           </div>
         </section>
 
-        <!-- Righe fattura -->
+        <!-- Righe -->
         <section class="card">
           <div class="section-header">
-            <h3 class="card-title">📝 Righe fattura</h3>
+            <h3 class="card-title">📝 Righe proforma</h3>
             <div style="display:flex;gap:0.5rem;align-items:center;">
               <button type="button" class="btn-add-hours" @click="hoursPickerOpen = !hoursPickerOpen">
-                {{ hoursPickerOpen ? '✕ Chiudi selezione ore' : '⏱️ Da ore' }}
+                {{ hoursPickerOpen ? '✕ Chiudi selezione ore' : '⏱️ Da ore collaboratore' }}
               </button>
               <button type="button" class="btn-add" @click="addItem">+ Aggiungi riga</button>
             </div>
@@ -62,16 +64,12 @@
                 <option value="">Tutti i progetti</option>
                 <option v-for="p in projects" :key="p.id" :value="p.id">{{ p.name }}</option>
               </select>
-              <select v-model="hFilter.client_id" class="sel">
-                <option value="">Tutti i clienti</option>
-                <option v-for="c in clients" :key="c.id" :value="c.id">{{ c.company_name }}</option>
-              </select>
               <input v-model="hFilter.month" type="month" class="sel" />
               <button type="button" class="btn-ghost-sm" @click="loadGroupedHours">🔍 Cerca</button>
             </div>
-
+            <p v-if="!form.collaborator_id" class="hp-hint">⚠️ Seleziona prima un collaboratore per filtrare le ore.</p>
             <div v-if="groupedHoursLoading" class="hp-loading">Caricamento…</div>
-            <div v-else-if="!groupedHours.length" class="hp-empty">Nessun risultato. Seleziona filtri e clicca Cerca.</div>
+            <div v-else-if="!groupedHours.length" class="hp-empty">Nessun risultato.</div>
             <table v-else class="hp-table">
               <thead>
                 <tr><th></th><th>Mese</th><th>Progetto</th><th>Tariffa</th><th>Ore</th><th>€/ora</th><th>Lordo</th></tr>
@@ -96,7 +94,7 @@
           </div>
 
           <div v-if="!form.items.length" class="empty-items">
-            Nessuna riga. Clicca "+ Aggiungi riga" per iniziare.
+            Nessuna riga. Seleziona dalle ore o clicca "+ Aggiungi riga".
           </div>
 
           <div v-for="(item, i) in form.items" :key="i" class="item-row">
@@ -107,7 +105,7 @@
 
             <div class="field">
               <label>Descrizione *</label>
-              <input v-model.trim="item.description" type="text" placeholder="Consulenza sviluppo software…" />
+              <input v-model.trim="item.description" type="text" placeholder="Attività svolta…" />
             </div>
 
             <div class="form-row-3">
@@ -116,7 +114,7 @@
                 <select v-model="item.tariff_id" @change="onTariffChange(i)">
                   <option value="">Seleziona…</option>
                   <option v-for="t in tariffs" :key="t.id" :value="t.id">
-                    {{ t.name }} (€ {{ fmt(t.hourly_rate) }}/h) {{ t.is_default ? '⭐' : '' }}
+                    {{ t.name }} (€ {{ fmt(t.hourly_rate) }}/h)
                   </option>
                 </select>
               </div>
@@ -152,27 +150,24 @@
         <div v-if="saveError" class="alert-error">{{ saveError }}</div>
 
         <div class="form-actions">
-          <button type="button" class="btn-secondary" @click="simulate">🔢 Simula</button>
           <button type="button" class="btn-primary" :disabled="saving" @click="saveInvoice">
             <span v-if="saving" class="spinner" />
-            {{ saving ? 'Salvataggio…' : '💾 Salva fattura' }}
+            {{ saving ? 'Salvataggio…' : '💾 Salva proforma' }}
           </button>
         </div>
       </div>
 
-      <!-- Colonna destra: anteprima totali -->
+      <!-- Colonna destra: anteprima -->
       <div class="invoice-preview-col">
-        <div class="preview-card" :class="{ highlighted: simulated }">
+        <div class="preview-card">
           <div class="preview-header">
             <h3>📊 Riepilogo</h3>
-            <span v-if="simulated" class="simulated-badge">Simulato</span>
           </div>
 
-          <div class="preview-client" v-if="selectedClient">
-            <div class="preview-client-name">{{ selectedClient.company_name }}</div>
-            <div class="preview-client-vat">P.IVA: {{ selectedClient.vat_number }}</div>
+          <div class="preview-client" v-if="selectedCollab">
+            <div class="preview-client-name">{{ selectedCollab.first_name }} {{ selectedCollab.last_name }}</div>
           </div>
-          <div v-else class="preview-no-client">Seleziona un cliente…</div>
+          <div v-else class="preview-no-client">Seleziona un collaboratore…</div>
 
           <div class="preview-lines">
             <div v-for="(ci, i) in computed_items" :key="i" class="preview-line">
@@ -190,10 +185,6 @@
               <span>4% ritenuta</span>
               <span class="mono">€ {{ fmt(totals.tax) }}</span>
             </div>
-            <div class="preview-total-row">
-              <span>Bollo virtuale</span>
-              <span class="mono">€ {{ fmt(form.stamp_duty) }}</span>
-            </div>
             <div class="preview-total-row grand">
               <span>TOTALE</span>
               <span class="mono">€ {{ fmt(totals.total) }}</span>
@@ -201,7 +192,7 @@
           </div>
 
           <div class="preview-note">
-            ℹ️ Il bollo di € 2,00 è dovuto su fatture esenti IVA superiori a € 77,47
+            ℹ️ Importo che il collaboratore può fatturare al cliente.
           </div>
         </div>
       </div>
@@ -214,34 +205,30 @@ import { ref, reactive, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import api from '../services/api.js';
 
-const router    = useRouter();
-const clients   = ref([]);
-const tariffs   = ref([]);
-const projects  = ref([]);
-const saving    = ref(false);
-const saveError = ref('');
-const simulated = ref(false);
+const router        = useRouter();
+const collaborators = ref([]);
+const tariffs       = ref([]);
+const projects      = ref([]);
+const saving        = ref(false);
+const saveError     = ref('');
 
-// ── Hours picker state ────────────────────────────────────
 const hoursPickerOpen     = ref(false);
 const groupedHours        = ref([]);
 const groupedHoursLoading = ref(false);
 const hSelected           = ref([]);
-const hFilter             = reactive({ project_id: '', client_id: '', month: '' });
+const hFilter             = reactive({ project_id: '', month: '' });
 
 const form = reactive({
-  invoice_number: '',
-  invoice_date:   new Date().toISOString().slice(0, 10),
-  client_id:      '',
-  stamp_duty:     2.00,
-  notes:          '',
-  items:          [],
+  invoice_number:  '',
+  invoice_date:    new Date().toISOString().slice(0, 10),
+  collaborator_id: '',
+  notes:           '',
+  items:           [],
 });
 
-const errors = reactive({ invoice_number: '', invoice_date: '', client_id: '' });
+const errors = reactive({ invoice_number: '', invoice_date: '', collaborator_id: '' });
 
-// ── Computed ─────────────────────────────────────────────
-const selectedClient = computed(() => clients.value.find(c => c.id == form.client_id) ?? null);
+const selectedCollab = computed(() => collaborators.value.find(c => c.id == form.collaborator_id) ?? null);
 
 const computed_items = computed(() =>
   form.items.map(item => {
@@ -261,46 +248,48 @@ const computed_items = computed(() =>
 const totals = computed(() => {
   const subtotal = computed_items.value.reduce((s, i) => s + i.imponibile, 0);
   const tax      = computed_items.value.reduce((s, i) => s + i.tax, 0);
-  const total    = subtotal + tax + parseFloat(form.stamp_duty || 0);
-  return { subtotal, tax, total };
+  return { subtotal, tax, total: subtotal + tax };
 });
 
-// ── Helpers ──────────────────────────────────────────────
 function fmt(v) { return Number(v ?? 0).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
-function recompute() { simulated.value = false; }
+function recompute() {}
 
 async function loadGroupedHours() {
   groupedHoursLoading.value = true;
   hSelected.value = [];
   try {
     const params = new URLSearchParams();
-    if (hFilter.project_id) params.set('project_id', hFilter.project_id);
-    if (hFilter.client_id)  params.set('client_id',  hFilter.client_id);
-    if (hFilter.month)      params.set('month',       hFilter.month);
-    const { data } = await api.get(`/hours/my/grouped?${params}`);
+    if (form.collaborator_id) params.set('collaborator_id', form.collaborator_id);
+    if (hFilter.project_id)   params.set('project_id',      hFilter.project_id);
+    if (hFilter.month)        params.set('month',            hFilter.month);
+    const { data } = await api.get(`/hours/collaborators/grouped?${params}`);
     groupedHours.value = data;
   } finally {
     groupedHoursLoading.value = false;
   }
 }
 
+function onCollaboratorChange() {
+  groupedHours.value = [];
+  hSelected.value = [];
+}
+
 function addFromHours() {
   for (const g of hSelected.value) {
-    const monthLabel = g.month ? ` — ${g.month}` : '';
+    const monthLabel   = g.month ? ` — ${g.month}` : '';
     const projectLabel = g.project_name ? ` (${g.project_name})` : '';
     form.items.push({
-      description:   `${g.tariff_name}${projectLabel}${monthLabel}`,
-      tariff_id:     g.tariff_id,
-      hours:         g.total_hours,
-      hourly_rate:   g.hourly_rate,
-      tax_inclusive: Boolean(g.tax_inclusive),
-      line_total:    0,
-      _work_hour_ids: g.work_hour_ids,
+      description:      `${g.tariff_name}${projectLabel}${monthLabel}`,
+      tariff_id:        g.tariff_id,
+      hours:            g.total_hours,
+      hourly_rate:      g.hourly_rate,
+      tax_inclusive:    Boolean(g.tax_inclusive),
+      line_total:       0,
+      _collab_hour_ids: g.collab_hour_ids,
     });
   }
   hSelected.value = [];
   hoursPickerOpen.value = false;
-  recompute();
 }
 
 function addItem() {
@@ -323,22 +312,15 @@ function onTariffChange(i) {
     form.items[i].hourly_rate   = t.hourly_rate;
     form.items[i].tax_inclusive = Boolean(t.tax_inclusive);
   }
-  recompute();
 }
 
 function validate() {
-  errors.invoice_number = form.invoice_number ? '' : 'Campo obbligatorio';
-  errors.invoice_date   = form.invoice_date   ? '' : 'Campo obbligatorio';
-  errors.client_id      = form.client_id      ? '' : 'Seleziona un cliente';
+  errors.invoice_number   = form.invoice_number   ? '' : 'Campo obbligatorio';
+  errors.invoice_date     = form.invoice_date     ? '' : 'Campo obbligatorio';
+  errors.collaborator_id  = form.collaborator_id  ? '' : 'Seleziona un collaboratore';
   if (Object.values(errors).some(Boolean)) return false;
   if (!form.items.length) { saveError.value = 'Aggiungi almeno una riga.'; return false; }
   return true;
-}
-
-// ── Actions ──────────────────────────────────────────────
-async function simulate() {
-  if (!form.items.length) return;
-  simulated.value = true;
 }
 
 async function saveInvoice() {
@@ -346,31 +328,30 @@ async function saveInvoice() {
   if (!validate()) return;
 
   const items = form.items.map((item, i) => ({
-    description:   item.description || `Riga ${i + 1}`,
-    tariff_id:     item.tariff_id,
-    hours:         parseFloat(item.hours),
-    hourly_rate:   parseFloat(item.hourly_rate),
-    tax_inclusive: item.tax_inclusive,
-    line_total:    computed_items.value[i].gross,
-    work_hour_id:  null,
+    description:     item.description || `Riga ${i + 1}`,
+    tariff_id:       item.tariff_id,
+    hours:           parseFloat(item.hours),
+    hourly_rate:     parseFloat(item.hourly_rate),
+    tax_inclusive:   item.tax_inclusive,
+    line_total:      computed_items.value[i].gross,
+    collab_hour_id:  null,
   }));
 
   const payload = {
-    invoice_number: form.invoice_number,
-    client_id:      form.client_id,
-    invoice_date:   form.invoice_date,
-    stamp_duty:     form.stamp_duty,
-    subtotal:       totals.value.subtotal,
-    tax_amount:     totals.value.tax,
-    total:          totals.value.total,
-    notes:          form.notes,
+    collaborator_id: form.collaborator_id,
+    invoice_number:  form.invoice_number,
+    invoice_date:    form.invoice_date,
+    subtotal:        totals.value.subtotal,
+    tax_amount:      totals.value.tax,
+    total:           totals.value.total,
+    notes:           form.notes,
     items,
   };
 
   saving.value = true;
   try {
-    await api.post('/invoices', payload);
-    router.push('/invoices');
+    await api.post('/collab-invoices', payload);
+    router.push('/collab-invoices');
   } catch (err) {
     saveError.value = err.response?.data?.message ?? 'Errore durante il salvataggio.';
   } finally {
@@ -378,14 +359,12 @@ async function saveInvoice() {
   }
 }
 
-// ── Fetch ────────────────────────────────────────────────
 onMounted(async () => {
-  const [c, t, p] = await Promise.all([api.get('/clients'), api.get('/tariffs'), api.get('/projects')]);
-  clients.value  = c.data.filter(x => x.is_active);
-  tariffs.value  = t.data;
-  projects.value = p.data.filter(x => x.is_active);
-  // Proponi numero fattura automatico
-  form.invoice_number = `${new Date().getFullYear()}/001`;
+  const [c, t, p] = await Promise.all([api.get('/collaborators'), api.get('/tariffs'), api.get('/projects')]);
+  collaborators.value = c.data.filter(x => x.is_active);
+  tariffs.value       = t.data;
+  projects.value      = p.data.filter(x => x.is_active);
+  form.invoice_number = `PRO-${new Date().getFullYear()}/001`;
 });
 </script>
 
@@ -398,134 +377,26 @@ onMounted(async () => {
 .btn-ghost { background: #f3f4f6; color: #374151; border: none; border-radius: 8px; padding: 0.55rem 1rem; font-size: 0.875rem; font-weight: 600; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; }
 .btn-ghost:hover { background: #e5e7eb; }
 
-/* ── Layout ────────────────────────────────────────────── */
-.invoice-layout {
-  display: grid;
-  grid-template-columns: 1fr 320px;
-  gap: 1.5rem;
-  align-items: start;
-}
+.invoice-layout { display: grid; grid-template-columns: 1fr 320px; gap: 1.5rem; align-items: start; }
+@media (max-width: 900px) { .invoice-layout { grid-template-columns: 1fr; } .invoice-preview-col { order: -1; } }
 
-@media (max-width: 900px) {
-  .invoice-layout { grid-template-columns: 1fr; }
-  .invoice-preview-col { order: -1; }
-}
-
-/* ── Card ──────────────────────────────────────────────── */
-.card {
-  background: #fff;
-  border-radius: 12px;
-  padding: 1.25rem;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-  margin-bottom: 1rem;
-}
-
+.card { background: #fff; border-radius: 12px; padding: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 1rem; }
 .card-title { font-size: 0.95rem; font-weight: 700; color: #111827; margin-bottom: 1rem; }
-
 .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
 .section-header .card-title { margin-bottom: 0; }
 
-/* ── Form ──────────────────────────────────────────────── */
 .form-row   { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
 .form-row-3 { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 0.75rem; margin-bottom: 0.75rem; }
 @media (max-width: 580px) { .form-row, .form-row-3 { grid-template-columns: 1fr; } }
 
 .field { display: flex; flex-direction: column; gap: 0.375rem; margin-bottom: 0.75rem; }
 .field label { font-size: 0.8rem; font-weight: 600; color: #374151; }
-.field input, .field select, .field textarea {
-  padding: 0.5rem 0.75rem; border: 1.5px solid #d1d5db; border-radius: 8px;
-  font-size: 0.9rem; color: #111827; background: #f9fafb; outline: none;
-  transition: border-color 0.2s; font-family: inherit; resize: vertical;
-}
+.field input, .field select, .field textarea { padding: 0.5rem 0.75rem; border: 1.5px solid #d1d5db; border-radius: 8px; font-size: 0.9rem; color: #111827; background: #f9fafb; outline: none; transition: border-color 0.2s; font-family: inherit; resize: vertical; }
 .field input:focus, .field select:focus, .field textarea:focus { border-color: #0f3460; background: #fff; box-shadow: 0 0 0 3px rgba(15,52,96,0.1); }
 .field.error input, .field.error select { border-color: #ef4444; }
 .field-error { font-size: 0.78rem; color: #ef4444; }
 
-/* ── Items ─────────────────────────────────────────────── */
-.btn-add {
-  background: #eff6ff; color: #1d4ed8; border: 1px solid #93c5fd;
-  border-radius: 8px; padding: 0.4rem 0.875rem; font-size: 0.85rem;
-  font-weight: 600; cursor: pointer;
-}
-.btn-add:hover { background: #dbeafe; }
-
-.empty-items { text-align: center; padding: 1.5rem; color: #9ca3af; font-size: 0.875rem; }
-
-.item-row {
-  border: 1.5px solid #e5e7eb; border-radius: 10px;
-  padding: 1rem; margin-bottom: 0.75rem; background: #fafafa;
-}
-
-.item-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; }
-.item-num { background: #0f3460; color: #fff; width: 1.5rem; height: 1.5rem; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 700; }
-
-.btn-remove { background: none; border: none; color: #ef4444; cursor: pointer; font-size: 0.9rem; padding: 0.25rem; border-radius: 4px; }
-.btn-remove:hover { background: #fef2f2; }
-
-.item-tax-toggle { display: flex; gap: 0.75rem; margin-bottom: 0.75rem; }
-
-.radio-inline {
-  display: flex; align-items: center; gap: 0.375rem;
-  padding: 0.375rem 0.75rem; border: 1.5px solid #e5e7eb;
-  border-radius: 8px; font-size: 0.8rem; font-weight: 500;
-  color: #6b7280; cursor: pointer; transition: all 0.15s;
-}
-.radio-inline.selected { border-color: #0f3460; background: #eff6ff; color: #1d4ed8; font-weight: 600; }
-.radio-inline input { display: none; }
-
-.item-preview {
-  display: flex; gap: 1rem; flex-wrap: wrap;
-  font-size: 0.8rem; color: #6b7280;
-  background: #f0fdf4; border-radius: 6px; padding: 0.5rem 0.75rem;
-}
-.item-preview .mono { color: #059669; }
-
-/* ── Form actions ───────────────────────────────────────── */
-.form-actions { display: flex; gap: 0.75rem; justify-content: flex-end; flex-wrap: wrap; }
-
-.btn-primary { display: inline-flex; align-items: center; gap: 0.375rem; background: linear-gradient(135deg, #0f3460, #1a6fb5); color: #fff; border: none; border-radius: 8px; padding: 0.65rem 1.25rem; font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: opacity 0.2s; }
-.btn-primary:hover:not(:disabled) { opacity: 0.9; }
-.btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
-
-.btn-secondary { display: inline-flex; align-items: center; gap: 0.375rem; background: #f3f4f6; color: #374151; border: none; border-radius: 8px; padding: 0.65rem 1.25rem; font-size: 0.9rem; font-weight: 600; cursor: pointer; }
-.btn-secondary:hover { background: #e5e7eb; }
-
-/* ── Preview card ───────────────────────────────────────── */
-.preview-card {
-  background: #fff; border-radius: 12px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-  padding: 1.25rem; position: sticky; top: 1rem;
-  border: 2px solid transparent; transition: border-color 0.3s;
-}
-
-.preview-card.highlighted { border-color: #059669; }
-
-.preview-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
-.preview-header h3 { font-size: 0.95rem; font-weight: 700; color: #111827; }
-.simulated-badge { background: #d1fae5; color: #065f46; font-size: 0.72rem; font-weight: 700; padding: 0.2rem 0.5rem; border-radius: 9999px; }
-
-.preview-client { margin-bottom: 1rem; padding-bottom: 0.75rem; border-bottom: 1px solid #f3f4f6; }
-.preview-client-name { font-size: 0.9rem; font-weight: 700; color: #111827; }
-.preview-client-vat  { font-size: 0.78rem; color: #9ca3af; margin-top: 0.125rem; }
-.preview-no-client { color: #d1d5db; font-size: 0.875rem; margin-bottom: 1rem; font-style: italic; }
-
-.preview-lines { margin-bottom: 1rem; display: flex; flex-direction: column; gap: 0.375rem; }
-.preview-line { display: flex; justify-content: space-between; font-size: 0.8rem; color: #6b7280; }
-.preview-line-desc { max-width: 160px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-
-.preview-totals { border-top: 1px solid #e5e7eb; padding-top: 0.75rem; display: flex; flex-direction: column; gap: 0.375rem; }
-.preview-total-row { display: flex; justify-content: space-between; font-size: 0.875rem; color: #374151; }
-.preview-total-row.grand { border-top: 2px solid #e5e7eb; padding-top: 0.5rem; font-weight: 800; font-size: 1.1rem; color: #059669; margin-top: 0.25rem; }
-.mono { font-family: 'Courier New', monospace; }
-
-.preview-note { margin-top: 1rem; font-size: 0.75rem; color: #9ca3af; line-height: 1.4; }
-
-/* ── Hours picker ───────────────────────────────────────── */
-.btn-add-hours {
-  background: #f0fdf4; color: #059669; border: 1px solid #6ee7b7;
-  border-radius: 8px; padding: 0.4rem 0.875rem; font-size: 0.85rem;
-  font-weight: 600; cursor: pointer;
-}
+.btn-add-hours { background: #f0fdf4; color: #059669; border: 1px solid #6ee7b7; border-radius: 8px; padding: 0.4rem 0.875rem; font-size: 0.85rem; font-weight: 600; cursor: pointer; }
 .btn-add-hours:hover { background: #dcfce7; }
 
 .hours-picker { border: 1.5px solid #e5e7eb; border-radius: 10px; padding: 1rem; margin-bottom: 1rem; background: #fafafa; }
@@ -534,18 +405,56 @@ onMounted(async () => {
 .sel:focus { border-color: #0f3460; }
 .btn-ghost-sm { background: #f3f4f6; color: #374151; border: none; border-radius: 8px; padding: 0.4rem 0.75rem; font-size: 0.85rem; font-weight: 600; cursor: pointer; }
 .btn-ghost-sm:hover { background: #e5e7eb; }
-
+.hp-hint { font-size: 0.8rem; color: #d97706; margin-bottom: 0.5rem; }
 .hp-loading, .hp-empty { padding: 1rem; text-align: center; color: #9ca3af; font-size: 0.875rem; }
-
 .hp-table { width: 100%; border-collapse: collapse; font-size: 0.83rem; margin-bottom: 0.75rem; }
 .hp-table th { text-align: left; padding: 0.5rem 0.5rem; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: #6b7280; border-bottom: 1px solid #e5e7eb; }
 .hp-table td { padding: 0.5rem 0.5rem; border-bottom: 1px solid #f3f4f6; color: #374151; }
 .hp-table tbody tr:hover td { background: #f0fdf4; }
-
 .hp-footer { display: flex; justify-content: flex-end; }
 
-.alert-error { background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; color: #b91c1c; padding: 0.75rem; font-size: 0.875rem; margin-bottom: 0.75rem; }
+.btn-add { background: #eff6ff; color: #1d4ed8; border: 1px solid #93c5fd; border-radius: 8px; padding: 0.4rem 0.875rem; font-size: 0.85rem; font-weight: 600; cursor: pointer; }
+.btn-add:hover { background: #dbeafe; }
+.btn-add:disabled { opacity: 0.5; cursor: not-allowed; }
 
+.empty-items { text-align: center; padding: 1.5rem; color: #9ca3af; font-size: 0.875rem; }
+
+.item-row { border: 1.5px solid #e5e7eb; border-radius: 10px; padding: 1rem; margin-bottom: 0.75rem; background: #fafafa; }
+.item-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; }
+.item-num { background: #0f3460; color: #fff; width: 1.5rem; height: 1.5rem; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 700; }
+.btn-remove { background: none; border: none; color: #ef4444; cursor: pointer; font-size: 0.9rem; padding: 0.25rem; border-radius: 4px; }
+.btn-remove:hover { background: #fef2f2; }
+
+.item-tax-toggle { display: flex; gap: 0.75rem; margin-bottom: 0.75rem; }
+.radio-inline { display: flex; align-items: center; gap: 0.375rem; padding: 0.375rem 0.75rem; border: 1.5px solid #e5e7eb; border-radius: 8px; font-size: 0.8rem; font-weight: 500; color: #6b7280; cursor: pointer; transition: all 0.15s; }
+.radio-inline.selected { border-color: #0f3460; background: #eff6ff; color: #1d4ed8; font-weight: 600; }
+.radio-inline input { display: none; }
+
+.item-preview { display: flex; gap: 1rem; flex-wrap: wrap; font-size: 0.8rem; color: #6b7280; background: #f0fdf4; border-radius: 6px; padding: 0.5rem 0.75rem; }
+.item-preview .mono { color: #059669; }
+
+.form-actions { display: flex; gap: 0.75rem; justify-content: flex-end; flex-wrap: wrap; }
+.btn-primary { display: inline-flex; align-items: center; gap: 0.375rem; background: linear-gradient(135deg, #0f3460, #1a6fb5); color: #fff; border: none; border-radius: 8px; padding: 0.65rem 1.25rem; font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: opacity 0.2s; }
+.btn-primary:hover:not(:disabled) { opacity: 0.9; }
+.btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.preview-card { background: #fff; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); padding: 1.25rem; position: sticky; top: 1rem; }
+.preview-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+.preview-header h3 { font-size: 0.95rem; font-weight: 700; color: #111827; }
+.preview-client { margin-bottom: 1rem; padding-bottom: 0.75rem; border-bottom: 1px solid #f3f4f6; }
+.preview-client-name { font-size: 0.9rem; font-weight: 700; color: #111827; }
+.preview-no-client { color: #d1d5db; font-size: 0.875rem; margin-bottom: 1rem; font-style: italic; }
+.preview-lines { margin-bottom: 1rem; display: flex; flex-direction: column; gap: 0.375rem; }
+.preview-line { display: flex; justify-content: space-between; font-size: 0.8rem; color: #6b7280; }
+.preview-line-desc { max-width: 160px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.preview-totals { border-top: 1px solid #e5e7eb; padding-top: 0.75rem; display: flex; flex-direction: column; gap: 0.375rem; }
+.preview-total-row { display: flex; justify-content: space-between; font-size: 0.875rem; color: #374151; }
+.preview-total-row.grand { border-top: 2px solid #e5e7eb; padding-top: 0.5rem; font-weight: 800; font-size: 1.1rem; color: #059669; margin-top: 0.25rem; }
+.mono { font-family: 'Courier New', monospace; }
+.green { color: #059669; font-weight: 600; }
+.preview-note { margin-top: 1rem; font-size: 0.75rem; color: #9ca3af; line-height: 1.4; }
+
+.alert-error { background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; color: #b91c1c; padding: 0.75rem; font-size: 0.875rem; margin-bottom: 0.75rem; }
 .spinner { display: inline-block; width: 0.875rem; height: 0.875rem; border: 2px solid rgba(255,255,255,0.35); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 

@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\TariffsController;
 use App\Http\Controllers\Api\ProjectsController;
 use App\Http\Controllers\Api\HoursController;
 use App\Http\Controllers\Api\InvoicesController;
+use App\Http\Controllers\Api\CollabInvoicesController;
 use App\Http\Controllers\Api\UsersController;
 use Illuminate\Support\Facades\Route;
 
@@ -63,11 +64,16 @@ Route::middleware('auth.jwt')->group(function () {
     Route::delete('/hours/collaborators/{id}',  [HoursController::class, 'destroyCollaborator']);
 
     Route::middleware('admin')->group(function () {
+        Route::get('/hours/my/grouped',              [HoursController::class, 'groupedMy']);
         Route::get('/hours/my',           [HoursController::class, 'indexMy']);
         Route::post('/hours/my/bulk',     [HoursController::class, 'bulkStoreMy']);
         Route::post('/hours/my',          [HoursController::class, 'storeMy']);
         Route::put('/hours/my/{id}',      [HoursController::class, 'updateMy']);
         Route::delete('/hours/my/{id}',   [HoursController::class, 'destroyMy']);
+    });
+
+    Route::middleware('admin')->group(function () {
+        Route::get('/hours/collaborators/grouped', [HoursController::class, 'groupedCollaborators']);
     });
 
     // Invoices (admin only) — summary/monthly BEFORE /{id}
@@ -78,6 +84,15 @@ Route::middleware('auth.jwt')->group(function () {
         Route::post('/invoices/simulate',        [InvoicesController::class, 'simulate']);
         Route::post('/invoices',                 [InvoicesController::class, 'store']);
         Route::put('/invoices/{id}/status',      [InvoicesController::class, 'updateStatus']);
+    });
+
+    // Collab Invoices (admin only) — proforma invoices for collaborators
+    Route::middleware('admin')->group(function () {
+        Route::get('/collab-invoices',               [CollabInvoicesController::class, 'index']);
+        Route::get('/collab-invoices/{id}',          [CollabInvoicesController::class, 'show']);
+        Route::post('/collab-invoices',              [CollabInvoicesController::class, 'store']);
+        Route::put('/collab-invoices/{id}/status',   [CollabInvoicesController::class, 'updateStatus']);
+        Route::delete('/collab-invoices/{id}',       [CollabInvoicesController::class, 'destroy']);
     });
 
     // Users (admin only)

@@ -267,7 +267,8 @@ async function resolveTariff() {
 }
 
 watch(() => modal.open, (v) => {
-  if (v && modal.isNew) {
+  // set default tariff only for brand-new entries, not when duplicating
+  if (v && modal.isNew && !form.tariff_id) {
     const def = tariffs.value.find(t => t.is_default);
     if (def) form.tariff_id = def.id;
   }
@@ -373,7 +374,7 @@ onMounted(load);
 
 .avatar { width: 1.75rem; height: 1.75rem; border-radius: 50%; background: #0f3460; color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 0.65rem; font-weight: 700; flex-shrink: 0; }
 
-.tariff-name { display: block; font-size: 0.8rem; color: #374151; }
+.tariff-name { display: inline; font-size: 0.8rem; color: #374151; }
 .pill { display: inline-block; padding: 0.1rem 0.4rem; border-radius: 9999px; font-size: 0.68rem; font-weight: 600; margin-top: 0.125rem; }
 .pill.in { background: #d1fae5; color: #065f46; }
 .pill.ex { background: #dbeafe; color: #1e40af; }

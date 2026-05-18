@@ -2,41 +2,41 @@
   <div class="page">
     <div class="page-header">
       <div>
-        <h2>🧾 Fatture</h2>
-        <p class="page-sub">Storico e gestione fatture simulate</p>
+        <h2>📄 Fatture Collaboratori</h2>
+        <p class="page-sub">Fatture proforma da inviare ai collaboratori</p>
       </div>
-      <RouterLink to="/invoices/new" class="btn-primary">+ Nuova fattura</RouterLink>
+      <RouterLink to="/collab-invoices/new" class="btn-primary">+ Nuova proforma</RouterLink>
     </div>
 
     <!-- Filtri -->
     <div class="toolbar">
-      <input v-model="filterYear"  type="number" class="select-input" placeholder="Anno" min="2020" :max="currentYear" style="width:90px" />
+      <input v-model="filterYear" type="number" class="select-input" placeholder="Anno" min="2020" :max="currentYear" style="width:90px" />
       <select v-model="filterMonth" class="select-input">
         <option value="">Tutti i mesi</option>
         <option v-for="(m, i) in months" :key="i+1" :value="i+1">{{ m }}</option>
       </select>
+      <select v-model="filterCollab" class="select-input">
+        <option value="">Tutti i collaboratori</option>
+        <option v-for="c in collaborators" :key="c.id" :value="c.id">{{ c.first_name }} {{ c.last_name }}</option>
+      </select>
       <select v-model="filterStatus" class="select-input">
         <option value="">Tutti gli stati</option>
         <option value="draft">Bozza</option>
-        <option value="issued">Emessa</option>
+        <option value="sent">Inviata</option>
         <option value="paid">Pagata</option>
       </select>
       <button class="btn-ghost" @click="load">🔄 Aggiorna</button>
     </div>
 
-    <!-- Riepilogo mese -->
-    <div v-if="invoices.length" class="summary-bar">
+    <!-- Riepilogo -->
+    <div v-if="filtered.length" class="summary-bar">
       <div class="summary-item">
-        <span class="summary-label">N° fatture</span>
+        <span class="summary-label">N° proforma</span>
         <span class="summary-value">{{ filtered.length }}</span>
       </div>
       <div class="summary-item">
-        <span class="summary-label">Totale fatturato</span>
-        <span class="summary-value green">€ {{ formatAmount(totalInvoiced) }}</span>
-      </div>
-      <div class="summary-item">
-        <span class="summary-label">Di cui 4%</span>
-        <span class="summary-value">€ {{ formatAmount(totalTax) }}</span>
+        <span class="summary-label">Totale lordo</span>
+        <span class="summary-value green">€ {{ formatAmount(totalGross) }}</span>
       </div>
       <div class="summary-item">
         <span class="summary-label">Pagate</span>
@@ -51,9 +51,9 @@
 
     <!-- Empty -->
     <div v-else-if="!filtered.length" class="empty-state">
-      <span>🧾</span>
-      <p>Nessuna fattura trovata.</p>
-      <RouterLink to="/invoices/new" class="btn-primary" style="margin-top:1rem">Crea la prima fattura</RouterLink>
+      <span>📄</span>
+      <p>Nessuna fattura proforma trovata.</p>
+      <RouterLink to="/collab-invoices/new" class="btn-primary" style="margin-top:1rem">Crea la prima proforma</RouterLink>
     </div>
 
     <!-- Tabella -->
@@ -61,12 +61,11 @@
       <table class="data-table">
         <thead>
           <tr>
-            <th>N° Fattura</th>
-            <th>Cliente</th>
+            <th>N° Proforma</th>
+            <th>Collaboratore</th>
             <th>Data</th>
             <th>Imponibile</th>
             <th>4%</th>
-            <th>Bollo</th>
             <th>Totale</th>
             <th>Stato</th>
             <th>Azioni</th>
@@ -75,11 +74,10 @@
         <tbody>
           <tr v-for="inv in filtered" :key="inv.id">
             <td class="mono fw">{{ inv.invoice_number }}</td>
-            <td>{{ inv.company_name }}</td>
+            <td>{{ inv.first_name }} {{ inv.last_name }}</td>
             <td class="mono">{{ formatDate(inv.invoice_date) }}</td>
             <td class="mono">€ {{ formatAmount(inv.subtotal) }}</td>
             <td class="mono muted">€ {{ formatAmount(inv.tax_amount) }}</td>
-            <td class="mono muted">€ {{ formatAmount(inv.stamp_duty) }}</td>
             <td class="mono green fw">€ {{ formatAmount(inv.total) }}</td>
             <td>
               <select
@@ -89,12 +87,13 @@
                 @change="updateStatus(inv, $event.target.value)"
               >
                 <option value="draft">Bozza</option>
-                <option value="issued">Emessa</option>
+                <option value="sent">Inviata</option>
                 <option value="paid">Pagata</option>
               </select>
             </td>
             <td class="actions">
               <button class="btn-icon" title="Dettaglio" @click="openDetail(inv)">🔍</button>
+              <button class="btn-icon" title="Elimina" @click="remove(inv)">🗑️</button>
             </td>
           </tr>
         </tbody>
@@ -106,7 +105,7 @@
       <div v-if="detail.open" class="modal-overlay" @click.self="detail.open = false">
         <div class="modal modal-wide">
           <div class="modal-header">
-            <h3>🧾 Fattura {{ detail.inv?.invoice_number }}</h3>
+            <h3>📄 Proforma {{ detail.inv?.invoice_number }}</h3>
             <div style="display:flex;gap:0.5rem;align-items:center">
               <button v-if="detail.data" class="btn-pdf" @click="downloadPdf">📄 PDF</button>
               <button class="modal-close" @click="detail.open = false">✕</button>
@@ -115,7 +114,7 @@
           <div v-if="detail.loading" class="detail-loading">Caricamento…</div>
           <div v-else-if="detail.data" class="detail-body">
             <div class="detail-meta">
-              <div><span class="meta-label">Cliente</span> {{ detail.data.company_name }}</div>
+              <div><span class="meta-label">Collaboratore</span> {{ detail.data.first_name }} {{ detail.data.last_name }}</div>
               <div><span class="meta-label">Data</span> {{ formatDate(detail.data.invoice_date) }}</div>
               <div><span class="meta-label">Stato</span> <span :class="['badge', detail.data.status]">{{ statusLabel(detail.data.status) }}</span></div>
             </div>
@@ -138,7 +137,6 @@
             <div class="totals-box">
               <div class="totals-row"><span>Imponibile</span><span class="mono">€ {{ formatAmount(detail.data.subtotal) }}</span></div>
               <div class="totals-row"><span>4% ritenuta</span><span class="mono">€ {{ formatAmount(detail.data.tax_amount) }}</span></div>
-              <div class="totals-row"><span>Bollo</span><span class="mono">€ {{ formatAmount(detail.data.stamp_duty) }}</span></div>
               <div class="totals-row total"><span>TOTALE</span><span class="mono">€ {{ formatAmount(detail.data.total) }}</span></div>
             </div>
 
@@ -153,53 +151,56 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue';
 import api from '../services/api.js';
-import { exportInvoicePdf } from '../services/pdf.js';
+import { exportCollabInvoicePdf } from '../services/pdf.js';
 
-const invoices  = ref([]);
-const loading   = ref(true);
-const currentYear = new Date().getFullYear();
+const invoices      = ref([]);
+const collaborators = ref([]);
+const loading       = ref(true);
+const currentYear   = new Date().getFullYear();
 
-const filterYear   = ref(currentYear);
-const filterMonth  = ref(new Date().getMonth() + 1);
-const filterStatus = ref('');
+const filterYear    = ref(currentYear);
+const filterMonth   = ref(new Date().getMonth() + 1);
+const filterCollab  = ref('');
+const filterStatus  = ref('');
 
 const months = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
 
 const detail = reactive({ open: false, loading: false, inv: null, data: null });
 
-// ── Computed ─────────────────────────────────────────────
 const filtered = computed(() =>
   invoices.value.filter(inv => {
+    if (filterCollab.value && inv.collaborator_id != filterCollab.value) return false;
     if (filterStatus.value && inv.status !== filterStatus.value) return false;
     return true;
   })
 );
 
-const totalInvoiced = computed(() => filtered.value.reduce((s, i) => s + parseFloat(i.total), 0));
-const totalTax      = computed(() => filtered.value.reduce((s, i) => s + parseFloat(i.tax_amount), 0));
-const paidCount     = computed(() => filtered.value.filter(i => i.status === 'paid').length);
+const totalGross = computed(() => filtered.value.reduce((s, i) => s + parseFloat(i.total), 0));
+const paidCount  = computed(() => filtered.value.filter(i => i.status === 'paid').length);
 
-// ── Helpers ──────────────────────────────────────────────
 function formatAmount(v) { return Number(v ?? 0).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 function formatDate(d) { return new Date(d).toLocaleDateString('it-IT'); }
-function statusLabel(s) { return { draft: 'Bozza', issued: 'Emessa', paid: 'Pagata' }[s] ?? s; }
+function statusLabel(s) { return { draft: 'Bozza', sent: 'Inviata', paid: 'Pagata' }[s] ?? s; }
 
-// ── Fetch ────────────────────────────────────────────────
 async function load() {
   loading.value = true;
   try {
     const params = new URLSearchParams();
     if (filterYear.value)  params.set('year',  filterYear.value);
     if (filterMonth.value) params.set('month', filterMonth.value);
-    const { data } = await api.get(`/invoices?${params}`);
-    invoices.value = data;
+    const [inv, collab] = await Promise.all([
+      api.get(`/collab-invoices?${params}`),
+      api.get('/collaborators'),
+    ]);
+    invoices.value      = inv.data;
+    collaborators.value = collab.data;
   } finally {
     loading.value = false;
   }
 }
 
 async function updateStatus(inv, status) {
-  await api.put(`/invoices/${inv.id}/status`, { status });
+  await api.put(`/collab-invoices/${inv.id}/status`, { status });
   inv.status = status;
 }
 
@@ -209,7 +210,7 @@ async function openDetail(inv) {
   detail.inv     = inv;
   detail.data    = null;
   try {
-    const { data } = await api.get(`/invoices/${inv.id}`);
+    const { data } = await api.get(`/collab-invoices/${inv.id}`);
     detail.data = data;
   } finally {
     detail.loading = false;
@@ -217,7 +218,13 @@ async function openDetail(inv) {
 }
 
 function downloadPdf() {
-  if (detail.data) exportInvoicePdf(detail.data);
+  if (detail.data) exportCollabInvoicePdf(detail.data);
+}
+
+async function remove(inv) {
+  if (!confirm(`Eliminare la proforma ${inv.invoice_number}?`)) return;
+  await api.delete(`/collab-invoices/${inv.id}`);
+  await load();
 }
 
 onMounted(load);
@@ -253,12 +260,9 @@ onMounted(load);
 .green { color: #059669; font-weight: 600; }
 .muted { color: #9ca3af; }
 
-.status-select {
-  padding: 0.25rem 0.5rem; border-radius: 9999px; border: 1px solid;
-  font-size: 0.75rem; font-weight: 600; cursor: pointer; outline: none;
-}
+.status-select { padding: 0.25rem 0.5rem; border-radius: 9999px; border: 1px solid; font-size: 0.75rem; font-weight: 600; cursor: pointer; outline: none; }
 .status-select.draft  { background: #f3f4f6; color: #374151; border-color: #d1d5db; }
-.status-select.issued { background: #dbeafe; color: #1d4ed8; border-color: #93c5fd; }
+.status-select.sent   { background: #fef9c3; color: #854d0e; border-color: #fde047; }
 .status-select.paid   { background: #d1fae5; color: #065f46; border-color: #6ee7b7; }
 
 .actions { display: flex; gap: 0.25rem; }
@@ -271,7 +275,6 @@ onMounted(load);
 .btn-pdf { display: inline-flex; align-items: center; gap: 0.25rem; background: #eff6ff; color: #1d4ed8; border: 1px solid #93c5fd; border-radius: 8px; padding: 0.35rem 0.75rem; font-size: 0.85rem; font-weight: 600; cursor: pointer; }
 .btn-pdf:hover { background: #dbeafe; }
 
-/* ── Modal / Detail ─────────────────────────────────────── */
 .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: flex; align-items: center; justify-content: center; z-index: 500; padding: 1rem; }
 .modal { background: #fff; border-radius: 16px; width: 100%; max-width: 520px; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
 .modal-wide { max-width: 700px; }
@@ -287,7 +290,7 @@ onMounted(load);
 
 .badge { display: inline-block; padding: 0.2rem 0.6rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; }
 .badge.draft  { background: #f3f4f6; color: #6b7280; }
-.badge.issued { background: #dbeafe; color: #1d4ed8; }
+.badge.sent   { background: #fef9c3; color: #854d0e; }
 .badge.paid   { background: #d1fae5; color: #065f46; }
 
 .pill { display: inline-block; padding: 0.1rem 0.4rem; border-radius: 9999px; font-size: 0.68rem; font-weight: 600; }
@@ -297,7 +300,6 @@ onMounted(load);
 .totals-box { margin-top: 1.25rem; border-top: 2px solid #e5e7eb; padding-top: 1rem; display: flex; flex-direction: column; gap: 0.375rem; max-width: 300px; margin-left: auto; }
 .totals-row { display: flex; justify-content: space-between; font-size: 0.875rem; color: #374151; }
 .totals-row.total { border-top: 1px solid #e5e7eb; padding-top: 0.375rem; font-weight: 800; font-size: 1rem; color: #059669; }
-
 .detail-notes { margin-top: 1rem; padding: 0.75rem; background: #f8fafc; border-radius: 8px; font-size: 0.875rem; color: #6b7280; }
 
 .skeleton-list { display: flex; flex-direction: column; gap: 0.5rem; }
