@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator;
 
 class HoursController extends Controller
 {
@@ -40,29 +41,101 @@ class HoursController extends Controller
         $user    = $request->attributes->get('jwt_user');
         $isAdmin = $user->role === 'admin';
 
+        $rules = [
+            'project_id'   => 'required|integer|exists:projects,id',
+            'tariff_id'    => 'required|integer|exists:tariffs,id',
+            'work_date'    => 'required|date',
+            'hours'        => 'required|numeric|min:0.25|max:24',
+            'description'  => 'nullable|string|max:2000',
+        ];
+        if ($isAdmin) {
+            $rules['collaborator_id'] = 'required|integer|exists:collaborators,id';
+        }
+        $validated = $request->validate($rules);
+
         $id = DB::table('collaborator_hours')->insertGetId([
-            'collaborator_id' => $isAdmin ? $request->input('collaborator_id') : $user->collaborator_id,
-            'project_id'      => $request->input('project_id'),
-            'tariff_id'       => $request->input('tariff_id'),
-            'work_date'       => $request->input('work_date'),
-            'hours'           => $request->input('hours'),
-            'description'     => $request->input('description', ''),
+            'collaborator_id' => $isAdmin ? $validated['collaborator_id'] : $user->collaborator_id,
+            'project_id'      => $validated['project_id'],
+            'tariff_id'       => $validated['tariff_id'],
+            'work_date'       => $validated['work_date'],
+            'hours'           => $validated['hours'],
+            'description'     => $validated['description'] ?? '',
             'status'          => $isAdmin ? 'approved' : 'pending',
         ]);
         Log::info('Hours: ore collaboratore registrate', [
             'id'             => $id,
-            'collaborator_id' => $isAdmin ? $request->input('collaborator_id') : $user->collaborator_id,
-            'work_date'      => $request->input('work_date'),
-            'hours'          => $request->input('hours'),
+            'collaborator_id' => $isAdmin ? $validated['collaborator_id'] : $user->collaborator_id,
+            'work_date'      => $validated['work_date'],
+            'hours'          => $validated['hours'],
             'status'         => $isAdmin ? 'approved' : 'pending',
         ]);
         return response()->json(['id' => $id], 201);
+    }
+
+    public function bulkStoreCollaborator(Request $request)
+    {
+        $user    = $request->attributes->get('jwt_user');
+        $isAdmin = $user->role === 'admin';
+        $payload = $request->validate([
+            'rows'   => 'required|array|min:1',
+        ]);
+        $rows    = $payload['rows'];
+        $count   = 0;
+
+        foreach ($rows as $row) {
+            $validator = Validator::make($row, [
+                'project_id'      => 'required|integer|exists:projects,id',
+                'tariff_id'       => 'required|integer|exists:tariffs,id',
+                'work_date'       => 'required|date',
+                'hours'           => 'required|numeric|min:0.25|max:24',
+                'description'     => 'nullable|string|max:2000',
+                'collaborator_id' => $isAdmin ? 'required|integer|exists:collaborators,id' : 'nullable',
+            ]);
+            if ($validator->fails()) {
+                return response()->json([
+                    'message' => 'Dati non validi alla riga ' . ($count + 1),
+                    'errors'  => $validator->errors(),
+                ], 422);
+            }
+            $validRow = $validator->validated();
+
+            DB::table('collaborator_hours')->insert([
+                'collaborator_id' => $isAdmin ? $validRow['collaborator_id'] : $user->collaborator_id,
+                'project_id'      => $validRow['project_id'],
+                'tariff_id'       => $validRow['tariff_id'],
+                'work_date'       => $validRow['work_date'],
+                'hours'           => $validRow['hours'],
+                'description'     => $validRow['description'] ?? '',
+                'status'          => $isAdmin ? 'approved' : 'pending',
+            ]);
+            $count++;
+        }
+
+        Log::info('Hours: bulk insert ore collaboratore', [
+            'count'         => $count,
+            'collaborator_id' => $isAdmin ? null : $user->collaborator_id,
+            'status'        => $isAdmin ? 'approved' : 'pending',
+        ]);
+
+        return response()->json(['count' => $count], 201);
     }
 
     public function updateCollaborator(Request $request, int $id)
     {
         $user    = $request->attributes->get('jwt_user');
         $isAdmin = $user->role === 'admin';
+
+        $rules = [
+            'project_id'   => 'required|integer|exists:projects,id',
+            'tariff_id'    => 'required|integer|exists:tariffs,id',
+            'work_date'    => 'required|date',
+            'hours'        => 'required|numeric|min:0.25|max:24',
+            'description'  => 'nullable|string|max:2000',
+        ];
+        if ($isAdmin) {
+            $rules['collaborator_id'] = 'required|integer|exists:collaborators,id';
+        }
+        $validated = $request->validate($rules);
 
         if (!$isAdmin) {
             $exists = DB::table('collaborator_hours')
@@ -76,14 +149,14 @@ class HoursController extends Controller
         }
 
         $data = [
-            'project_id'  => $request->input('project_id'),
-            'tariff_id'   => $request->input('tariff_id'),
-            'work_date'   => $request->input('work_date'),
-            'hours'       => $request->input('hours'),
-            'description' => $request->input('description', ''),
+            'project_id'  => $validated['project_id'],
+            'tariff_id'   => $validated['tariff_id'],
+            'work_date'   => $validated['work_date'],
+            'hours'       => $validated['hours'],
+            'description' => $validated['description'] ?? '',
         ];
         if ($isAdmin) {
-            $data['collaborator_id'] = $request->input('collaborator_id');
+            $data['collaborator_id'] = $validated['collaborator_id'];
         }
 
         DB::table('collaborator_hours')->where('id', $id)->update($data);

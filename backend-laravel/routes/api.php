@@ -60,6 +60,7 @@ Route::middleware('auth.jwt')->group(function () {
 
     // Hours
     Route::get('/hours/collaborators',                    [HoursController::class, 'indexCollaborators']);
+    Route::post('/hours/collaborators/bulk',              [HoursController::class, 'bulkStoreCollaborator']);
     Route::post('/hours/collaborators',                   [HoursController::class, 'storeCollaborator']);
     Route::put('/hours/collaborators/{id}',               [HoursController::class, 'updateCollaborator']);
     Route::delete('/hours/collaborators/{id}',            [HoursController::class, 'destroyCollaborator']);

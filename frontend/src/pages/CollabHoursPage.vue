@@ -5,7 +5,10 @@
         <h2>🕐 Ore Collaboratori</h2>
         <p class="page-sub">Ore lavorate dai collaboratori per te</p>
       </div>
-      <button class="btn-primary" @click="openNew">+ Inserisci ore</button>
+      <div class="header-actions">
+        <button class="btn-secondary" @click="openMulti">📅 Più giorni</button>
+        <button class="btn-primary" @click="openNew">+ Inserisci ore</button>
+      </div>
     </div>
 
     <!-- Filtri -->
@@ -110,12 +113,43 @@
       <div v-if="modal.open" class="modal-overlay" @click.self="closeModal">
         <div class="modal">
           <div class="modal-header">
-            <h3>{{ modal.isNew ? 'Inserisci ore collaboratore' : 'Modifica ore' }}</h3>
+            <h3>{{ modal.mode === 'multi' ? 'Inserisci più giorni collaboratore' : (modal.isNew ? 'Inserisci ore collaboratore' : 'Modifica ore') }}</h3>
             <button class="modal-close" @click="closeModal">✕</button>
           </div>
           <form class="modal-form" @submit.prevent="save">
 
-            <div class="form-row">
+            <div v-if="modal.isNew" class="mode-tabs">
+              <button type="button" :class="['mode-tab', modal.mode === 'single' && 'active']" @click="modal.mode = 'single'">Singolo giorno</button>
+              <button type="button" :class="['mode-tab', modal.mode === 'multi' && 'active']" @click="modal.mode = 'multi'">Più giorni</button>
+            </div>
+
+            <template v-if="modal.mode === 'multi'">
+              <div class="form-row">
+                <div class="field">
+                  <label>Dal *</label>
+                  <input v-model="multiForm.date_from" type="date" />
+                </div>
+                <div class="field">
+                  <label>Al *</label>
+                  <input v-model="multiForm.date_to" type="date" />
+                </div>
+              </div>
+              <div class="field">
+                <label>Giorni della settimana</label>
+                <div class="weekday-grid">
+                  <label v-for="w in WEEKDAYS" :key="w.day" :class="['weekday-btn', selectedWeekdays.includes(w.day) && 'on']">
+                    <input type="checkbox" :value="w.day" v-model="selectedWeekdays" hidden />
+                    {{ w.label }}
+                  </label>
+                </div>
+                <span class="hint-ok" v-if="selectedDates.length">
+                  {{ selectedDates.length }} {{ selectedDates.length === 1 ? 'giorno' : 'giorni' }} selezionati
+                </span>
+                <span class="field-error" v-else-if="multiForm.date_from && multiForm.date_to">Nessun giorno nel range</span>
+              </div>
+            </template>
+
+            <div v-if="modal.mode === 'single'" class="form-row">
               <div class="field" :class="{ error: formErrors.work_date }">
                 <label>Data *</label>
                 <input v-model="form.work_date" type="date" />
@@ -126,6 +160,12 @@
                 <input v-model="form.hours" type="number" min="0.25" max="24" step="0.25" placeholder="8" />
                 <span v-if="formErrors.hours" class="field-error">{{ formErrors.hours }}</span>
               </div>
+            </div>
+
+            <div v-else class="field" :class="{ error: formErrors.hours }">
+              <label>Ore per giorno *</label>
+              <input v-model="form.hours" type="number" min="0.25" max="24" step="0.25" placeholder="8" />
+              <span v-if="formErrors.hours" class="field-error">{{ formErrors.hours }}</span>
             </div>
 
             <div class="field" :class="{ error: formErrors.collaborator_id }">
@@ -178,9 +218,9 @@
 
             <div class="modal-footer">
               <button type="button" class="btn-secondary" @click="closeModal">Annulla</button>
-              <button type="submit" class="btn-primary" :disabled="saving">
+              <button type="submit" class="btn-primary" :disabled="saving || (modal.mode === 'multi' && !selectedDates.length)">
                 <span v-if="saving" class="spinner" />
-                {{ saving ? 'Salvataggio…' : 'Salva' }}
+                {{ saving ? 'Salvataggio…' : modal.mode === 'multi' ? `Inserisci ${selectedDates.length} giorni` : 'Salva' }}
               </button>
             </div>
           </form>
@@ -207,9 +247,16 @@ const filterMonth   = ref('');
 const tariffResolved = ref(false);
 
 const actioning = reactive({});
-const modal = reactive({ open: false, isNew: true, _id: null });
+const modal = reactive({ open: false, isNew: true, _id: null, mode: 'single' });
 const form  = reactive({ work_date: today(), hours: '', collaborator_id: '', project_id: '', tariff_id: '', description: '' });
 const formErrors = reactive({ work_date: '', hours: '', collaborator_id: '', project_id: '', tariff_id: '' });
+const multiForm        = reactive({ date_from: today(), date_to: today() });
+const selectedWeekdays = ref([1, 2, 3, 4, 5]);
+
+const WEEKDAYS = [
+  { day: 1, label: 'Lun' }, { day: 2, label: 'Mar' }, { day: 3, label: 'Mer' },
+  { day: 4, label: 'Gio' }, { day: 5, label: 'Ven' }, { day: 6, label: 'Sab' }, { day: 0, label: 'Dom' },
+];
 
 const filtered = computed(() =>
   hours.value.filter(h => {
@@ -234,6 +281,20 @@ const modalPreview = computed(() => {
 const totalHours = computed(() => filtered.value.reduce((s, h) => s + parseFloat(h.hours), 0));
 const totalGross = computed(() => filtered.value.reduce((s, h) => s + calcGross(h), 0));
 
+const selectedDates = computed(() => {
+  if (!multiForm.date_from || !multiForm.date_to) return [];
+  const start = new Date(multiForm.date_from + 'T00:00:00');
+  const end   = new Date(multiForm.date_to + 'T00:00:00');
+  if (start > end) return [];
+  const dates = [];
+  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+    if (selectedWeekdays.value.includes(d.getDay())) {
+      dates.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`);
+    }
+  }
+  return dates;
+});
+
 function today() { return new Date().toISOString().slice(0, 10); }
 function fmt(v)  { return Number(v).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 function formatAmount(v) { return fmt(v); }
@@ -249,12 +310,14 @@ function clearFilters() { filterCollab.value = ''; filterProject.value = ''; fil
 function resetForm() {
   Object.assign(form, { work_date: today(), hours: '', collaborator_id: '', project_id: '', tariff_id: '', description: '' });
   Object.assign(formErrors, { work_date: '', hours: '', collaborator_id: '', project_id: '', tariff_id: '' });
+  Object.assign(multiForm, { date_from: today(), date_to: today() });
+  selectedWeekdays.value = [1, 2, 3, 4, 5];
   saveError.value = '';
   tariffResolved.value = false;
 }
 
 function validate() {
-  formErrors.work_date       = form.work_date       ? '' : 'Obbligatorio';
+  formErrors.work_date       = modal.mode === 'single' && !form.work_date ? 'Obbligatorio' : '';
   formErrors.hours           = form.hours           ? '' : 'Obbligatorio';
   formErrors.collaborator_id = form.collaborator_id ? '' : 'Obbligatorio';
   formErrors.project_id      = form.project_id      ? '' : 'Obbligatorio';
@@ -301,7 +364,12 @@ async function load() {
   } finally { loading.value = false; }
 }
 
-function openNew() { resetForm(); modal.isNew = true; modal.open = true; modal._id = null; }
+function openNew() { resetForm(); modal.isNew = true; modal.open = true; modal._id = null; modal.mode = 'single'; }
+
+function openMulti() {
+  resetForm();
+  modal.isNew = true; modal.open = true; modal._id = null; modal.mode = 'multi';
+}
 
 function openDuplicate(h) {
   resetForm();
@@ -313,7 +381,7 @@ function openDuplicate(h) {
     tariff_id:       h.tariff_id,
     description:     h.description ?? '',
   });
-  modal.isNew = true; modal.open = true; modal._id = null;
+  modal.isNew = true; modal.open = true; modal._id = null; modal.mode = 'single';
 }
 
 function openEdit(h) {
@@ -326,16 +394,33 @@ function openEdit(h) {
     tariff_id:       h.tariff_id,
     description:     h.description ?? '',
   });
-  modal.isNew = false; modal.open = true; modal._id = h.id;
+  modal.isNew = false; modal.open = true; modal._id = h.id; modal.mode = 'single';
 }
 
 function closeModal() { modal.open = false; }
 
 async function save() {
   if (!validate()) return;
+  if (modal.mode === 'multi' && !selectedDates.value.length) {
+    saveError.value = 'Nessun giorno selezionato nel range.';
+    return;
+  }
   saving.value = true; saveError.value = '';
   try {
-    if (modal.isNew) await api.post('/hours/collaborators', form);
+    if (modal.isNew && modal.mode === 'multi') {
+      await api.post('/hours/collaborators/bulk', {
+        rows: selectedDates.value.map(date => ({
+          collaborator_id: form.collaborator_id,
+          project_id:      form.project_id,
+          tariff_id:       form.tariff_id,
+          work_date:       date,
+          hours:           form.hours,
+          description:     form.description,
+        })),
+      });
+    } else if (modal.isNew) {
+      await api.post('/hours/collaborators', form);
+    }
     else             await api.put(`/hours/collaborators/${modal._id}`, form);
     await load(); closeModal();
   } catch (err) {
@@ -408,6 +493,21 @@ onMounted(load);
 .preview-title { font-size: 0.8rem; font-weight: 700; color: #374151; margin-bottom: 0.75rem; }
 .preview-rows { display: flex; flex-direction: column; gap: 0.375rem; }
 .preview-row { display: flex; justify-content: space-between; font-size: 0.875rem; color: #374151; }
+
+.mode-tabs { display: flex; gap: 0.5rem; margin-bottom: 0.25rem; }
+.mode-tab {
+  border: 1px solid #d1d5db; background: #fff; color: #374151;
+  border-radius: 9999px; padding: 0.35rem 0.75rem; font-size: 0.78rem;
+  font-weight: 600; cursor: pointer;
+}
+.mode-tab.active { background: #0f3460; border-color: #0f3460; color: #fff; }
+.weekday-grid { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.25rem; }
+.weekday-btn {
+  border: 1px solid #d1d5db; border-radius: 9999px;
+  padding: 0.2rem 0.55rem; font-size: 0.75rem; color: #374151; cursor: pointer;
+  background: #fff;
+}
+.weekday-btn.on { background: #eff6ff; border-color: #60a5fa; color: #1d4ed8; }
 
 .hint-ok { font-size: 0.78rem; color: #059669; font-weight: 600; }
 
