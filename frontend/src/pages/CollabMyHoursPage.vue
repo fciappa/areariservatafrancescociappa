@@ -13,12 +13,18 @@
 
     <!-- Filtri -->
     <div class="toolbar">
-      <select v-model="filterProject" class="select-input">
-        <option value="">Tutti i progetti</option>
-        <option v-for="p in projects" :key="p.id" :value="p.id">{{ p.name }}</option>
+      <select v-model="filterProjectIds" class="select-input multi-project" multiple>
+        <option v-for="p in projects" :key="p.id" :value="String(p.id)">{{ p.name }}</option>
       </select>
-      <input v-model="filterMonth" type="month" class="select-input" />
-      <button v-if="filterProject || filterMonth" class="btn-ghost" @click="clearFilters">✕ Pulisci</button>
+      <select v-model="filterMonthNumber" class="select-input">
+        <option value="">Tutti i mesi</option>
+        <option v-for="m in monthOptions" :key="m.value" :value="m.value">{{ m.label }}</option>
+      </select>
+      <select v-model="filterYear" class="select-input">
+        <option value="">Tutti gli anni</option>
+        <option v-for="y in availableYears" :key="y" :value="String(y)">{{ y }}</option>
+      </select>
+      <button v-if="filterProjectIds.length || filterMonthNumber || filterYear" class="btn-ghost" @click="clearFilters">✕ Pulisci</button>
     </div>
 
     <!-- Riepilogo -->
@@ -45,7 +51,7 @@
     <!-- Empty -->
     <div v-else-if="!filtered.length" class="empty-state">
       <span>⏱️</span>
-      <p>Nessuna ora registrata{{ filterMonth ? ' per questo mese' : '' }}.</p>
+      <p>Nessuna ora registrata{{ filterMonthNumber || filterYear ? ' per questo periodo' : '' }}.</p>
     </div>
 
     <!-- Tabella -->
@@ -220,9 +226,26 @@ const projects    = ref([]);
 const loading     = ref(true);
 const saving      = ref(false);
 const saveError   = ref('');
-const filterProject = ref('');
-const filterMonth = ref('');
+const filterProjectIds = ref([]);
+const filterMonthNumber = ref('');
+const filterYear = ref('');
 const today       = new Date().toISOString().slice(0, 10);
+const currentYear = String(new Date().getFullYear());
+
+const monthOptions = [
+  { value: '01', label: 'Gennaio' },
+  { value: '02', label: 'Febbraio' },
+  { value: '03', label: 'Marzo' },
+  { value: '04', label: 'Aprile' },
+  { value: '05', label: 'Maggio' },
+  { value: '06', label: 'Giugno' },
+  { value: '07', label: 'Luglio' },
+  { value: '08', label: 'Agosto' },
+  { value: '09', label: 'Settembre' },
+  { value: '10', label: 'Ottobre' },
+  { value: '11', label: 'Novembre' },
+  { value: '12', label: 'Dicembre' },
+];
 
 const modal = reactive({ open: false, mode: 'single', isEdit: false, editId: null, editTariffId: null });
 const form  = reactive({ work_date: today, hours: '', project_id: '', description: '' });
@@ -237,11 +260,22 @@ const WEEKDAYS = [
 
 const filtered = computed(() =>
   hours.value.filter(h => {
-    if (filterProject.value && h.project_id != filterProject.value) return false;
-    if (filterMonth.value && h.work_date.slice(0, 7) !== filterMonth.value) return false;
+    if (filterProjectIds.value.length && !filterProjectIds.value.includes(String(h.project_id))) return false;
+    const [year, month] = h.work_date.slice(0, 7).split('-');
+    if (filterYear.value && year !== filterYear.value) return false;
+    if (filterMonthNumber.value && month !== filterMonthNumber.value) return false;
     return true;
   })
 );
+
+const availableYears = computed(() => {
+  const years = new Set([currentYear]);
+  for (const h of hours.value) {
+    const y = h.work_date?.slice(0, 4);
+    if (y) years.add(y);
+  }
+  return Array.from(years).sort((a, b) => Number(b) - Number(a));
+});
 
 const selectedProject = computed(() =>
   projects.value.find(p => p.id == form.project_id) ?? null
@@ -304,8 +338,9 @@ function rowClass(h) {
 }
 
 function clearFilters() {
-  filterProject.value = '';
-  filterMonth.value = '';
+  filterProjectIds.value = [];
+  filterMonthNumber.value = '';
+  filterYear.value = '';
 }
 
 function onProjectChange() {}
@@ -431,6 +466,7 @@ onMounted(load);
 .toolbar { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem; flex-wrap: wrap; }
 .select-input { padding: 0.5rem 0.75rem; border: 1.5px solid #d1d5db; border-radius: 8px; font-size: 0.875rem; background: #fff; outline: none; color: #374151; }
 .select-input:focus { border-color: #0f3460; }
+.multi-project { min-width: 220px; min-height: 110px; }
 .btn-ghost { background: none; border: none; color: #6b7280; font-size: 0.875rem; cursor: pointer; padding: 0.5rem; border-radius: 8px; }
 .btn-ghost:hover { background: #f3f4f6; }
 
