@@ -139,7 +139,12 @@
       <section class="card">
         <div class="card-header">
           <h3>🗓️ Dettaglio ore — {{ monthLabel }}</h3>
-          <input v-model="selectedMonth" type="month" class="month-picker" />
+          <input
+            :value="monthDateValue"
+            type="date"
+            class="month-picker"
+            @input="onMonthDateInput"
+          />
         </div>
         <div v-if="loading" class="skeleton-list"><div v-for="i in 5" :key="i" class="skeleton-row" /></div>
         <div v-else-if="!collabData.hours.length" class="empty-small">Nessuna ora registrata questo mese.</div>
@@ -193,6 +198,8 @@ const monthLabel = computed(() => {
   return `${monthNames[parseInt(m) - 1]} ${y}`;
 });
 
+const monthDateValue = computed(() => `${selectedMonth.value}-01`);
+
 // ── Admin data ────────────────────────────────────────────
 const adminData = reactive({
   invoiced: 0, invoiceCount: 0, myHours: 0, collabHours: 0,
@@ -217,7 +224,16 @@ function statusLabel(s) { return { draft: 'Bozza', issued: 'Emessa', paid: 'Paga
 function monthName(m)  { return monthNames[parseInt(m) - 1]; }
 function monthShort(m) { return monthShorts[parseInt(m) - 1]; }
 
-function calcGross(h) { return parseFloat(h.hours) * parseFloat(h.hourly_rate); }
+function onMonthDateInput(event) {
+  const value = event.target?.value ?? '';
+  if (!value) return;
+  selectedMonth.value = value.slice(0, 7);
+}
+
+function calcGross(h) {
+  const rate = h.rate_type === 'daily' ? parseFloat(h.hourly_rate) / 8 : parseFloat(h.hourly_rate);
+  return parseFloat(h.hours) * rate;
+}
 function calcTax(h)   { const g = calcGross(h); return h.tax_inclusive ? g - g / 1.04 : g * 0.04; }
 
 function isCurrentMonth(m) {
@@ -253,14 +269,14 @@ async function loadAdmin() {
   if (collabHours.status === 'fulfilled') {
     const filtered = collabHours.value.data.filter(h => h.work_date.slice(0, 7) === selectedMonth.value);
     adminData.collabHours = filtered.reduce((s, h) => s + parseFloat(h.hours), 0);
-    adminData.collabCost  = filtered.reduce((s, h) => s + parseFloat(h.hours) * parseFloat(h.hourly_rate), 0);
+    adminData.collabCost  = filtered.reduce((s, h) => s + calcGross(h), 0);
 
     // Raggruppa per collaboratore
     const map = {};
     for (const h of filtered) {
       if (!map[h.collaborator_id]) map[h.collaborator_id] = { collaborator_id: h.collaborator_id, first_name: h.first_name, last_name: h.last_name, total_hours: 0, total_cost: 0 };
       map[h.collaborator_id].total_hours += parseFloat(h.hours);
-      map[h.collaborator_id].total_cost  += parseFloat(h.hours) * parseFloat(h.hourly_rate);
+      map[h.collaborator_id].total_cost  += calcGross(h);
     }
     adminData.collabSummary = Object.values(map);
   }
@@ -273,7 +289,7 @@ async function loadAdmin() {
 async function loadCollab() {
   const { data } = await api.get('/hours/collaborators');
   const filtered = data.filter(h => h.work_date.slice(0, 7) === selectedMonth.value);
-  const pending  = filtered.filter(h => !h.invoiced_at);
+  const pending  = filtered.filter(h => !h.invoiced_at && h.status !== 'rejected');
   const invoiced = filtered.filter(h =>  h.invoiced_at);
 
   collabData.hours         = filtered;

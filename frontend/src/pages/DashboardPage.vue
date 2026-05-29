@@ -130,7 +130,7 @@
                 <td>{{ formatDate(h.work_date) }}</td>
                 <td class="mono">{{ h.hours }}h</td>
                 <td>{{ h.tariff_name }}</td>
-                <td class="mono amount">€ {{ formatAmount(h.hours * h.hourly_rate) }}</td>
+                <td class="mono amount">€ {{ formatAmount(calcGross(h)) }}</td>
               </tr>
             </tbody>
           </table>
@@ -296,7 +296,9 @@ const totalCollabHours = computed(() =>
 );
 
 const totalCollabAmount = computed(() =>
-  collabHours.value.reduce((s, h) => s + parseFloat(h.hours) * parseFloat(h.hourly_rate), 0)
+  collabHours.value
+    .filter(h => !h.invoiced_at && h.status !== 'rejected')
+    .reduce((s, h) => s + calcGross(h), 0)
 );
 
 const sentInvoicesCount = computed(() =>
@@ -334,6 +336,11 @@ function statusLabel(s) {
 
 function collabStatusLabel(s) {
   return { draft: 'Bozza', sent: 'Inviata', paid: 'Pagata' }[s] ?? s;
+}
+
+function calcGross(h) {
+  const rate = h.rate_type === 'daily' ? parseFloat(h.hourly_rate) / 8 : parseFloat(h.hourly_rate);
+  return parseFloat(h.hours) * rate;
 }
 
 // Fetch

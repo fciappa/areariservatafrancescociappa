@@ -17,8 +17,8 @@
         <option value="">Tutti i progetti</option>
         <option v-for="p in projects" :key="p.id" :value="p.id">{{ p.name }}</option>
       </select>
-      <input v-model="filterMonth" type="month" class="select-input" />
-      <button v-if="filterProject || filterMonth" class="btn-ghost" @click="clearFilters">✕ Pulisci</button>
+      <input v-model="filterDate" type="date" class="select-input" />
+      <button v-if="filterProject || filterDate" class="btn-ghost" @click="clearFilters">✕ Pulisci</button>
     </div>
 
     <!-- Riepilogo -->
@@ -45,7 +45,7 @@
     <!-- Empty -->
     <div v-else-if="!filtered.length" class="empty-state">
       <span>⏱️</span>
-      <p>Nessuna ora registrata{{ filterMonth ? ' per questo mese' : '' }}.</p>
+      <p>Nessuna ora registrata{{ filterDate ? ' per questo mese' : '' }}.</p>
     </div>
 
     <!-- Tabella -->
@@ -216,7 +216,7 @@ const loading     = ref(true);
 const saving      = ref(false);
 const saveError   = ref('');
 const filterProject = ref('');
-const filterMonth = ref('');
+const filterDate = ref('');
 const today       = new Date().toISOString().slice(0, 10);
 
 const modal = reactive({ open: false, mode: 'single' });
@@ -233,7 +233,7 @@ const WEEKDAYS = [
 const filtered = computed(() =>
   hours.value.filter(h => {
     if (filterProject.value && h.project_id != filterProject.value) return false;
-    if (filterMonth.value && h.work_date.slice(0, 7) !== filterMonth.value) return false;
+    if (filterDate.value && h.work_date.slice(0, 7) !== filterDate.value.slice(0, 7)) return false;
     return true;
   })
 );
@@ -296,7 +296,7 @@ function rowClass(h) {
 
 function clearFilters() {
   filterProject.value = '';
-  filterMonth.value = '';
+  filterDate.value = '';
 }
 
 function onProjectChange() {}

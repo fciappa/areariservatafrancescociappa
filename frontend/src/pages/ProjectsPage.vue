@@ -57,6 +57,12 @@
         <div v-if="p.description" class="card-desc">{{ p.description }}</div>
 
         <div class="card-meta">
+          <span
+            class="referent-badge"
+            :title="referentTitle(p)"
+          >
+            👤 Referenti: {{ p.referents_count ?? 0 }}
+          </span>
           <span :class="['status-badge', p.status]">{{ statusLabel(p.status) }}</span>
           <span class="date-range">
             📅 {{ formatDate(p.start_date) }}
@@ -318,6 +324,11 @@ function statusLabel(s) {
   return { active: 'Attivo', on_hold: 'In pausa', completed: 'Completato', archived: 'Archiviato' }[s] ?? s;
 }
 
+function referentTitle(p) {
+  if (!p.referents_count) return 'Nessun referente assegnato';
+  return `Referenti:\n${String(p.referents_list).split(', ').join('\n')}`;
+}
+
 function resetForm() {
   Object.assign(form, { name: '', client_id: '', description: '', status: 'active', start_date: today(), end_date: '', notes: '', is_active: true });
   Object.assign(formErrors, { name: '', client_id: '', start_date: '' });
@@ -487,6 +498,17 @@ onMounted(load);
 .status-badge.on_hold   { background: #fef3c7; color: #92400e; }
 .status-badge.completed { background: #ede9fe; color: #4c1d95; }
 .status-badge.archived  { background: #f3f4f6; color: #6b7280; }
+
+.referent-badge {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  border-radius: 9999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  background: #ede9fe;
+  color: #5b21b6;
+  cursor: default;
+}
 
 .date-range { font-size: 0.78rem; color: #9ca3af; }
 

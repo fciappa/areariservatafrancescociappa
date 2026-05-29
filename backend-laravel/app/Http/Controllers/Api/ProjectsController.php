@@ -12,9 +12,20 @@ class ProjectsController extends Controller
     public function index()
     {
         $rows = DB::select('
-            SELECT p.*, c.company_name, c.vat_number
+            SELECT p.*, c.company_name, c.vat_number,
+                   COALESCE(r.referents_count, 0) AS referents_count,
+                   r.referents_list
             FROM projects p
             JOIN clients c ON c.id = p.client_id
+            LEFT JOIN (
+                SELECT pr.project_id,
+                       COUNT(*) AS referents_count,
+                       GROUP_CONCAT(u.username ORDER BY u.username SEPARATOR ", ") AS referents_list
+                FROM project_referents pr
+                JOIN users u ON u.id = pr.user_id
+                WHERE u.role = "referent"
+                GROUP BY pr.project_id
+            ) r ON r.project_id = p.id
             ORDER BY p.created_at DESC
         ');
         return response()->json($rows);
