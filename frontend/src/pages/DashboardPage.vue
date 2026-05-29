@@ -71,10 +71,10 @@
               <tr><th>Cliente</th><th>Ore</th><th>Tariffa</th></tr>
             </thead>
             <tbody>
-              <tr v-for="h in myHoursThisMonth" :key="h.client_id">
+              <tr v-for="h in myHoursThisMonth" :key="`${h.client_id}-${h.tariff_id}`">
                 <td>{{ h.company_name }}</td>
                 <td class="mono">{{ h.total_hours }}h</td>
-                <td class="mono">€ {{ formatAmount(h.hourly_rate) }}/h</td>
+                <td class="mono">{{ h.tariff_name }} · {{ rateLabel(h) }}</td>
               </tr>
             </tbody>
           </table>
@@ -129,7 +129,7 @@
               <tr v-for="h in collabHours" :key="h.id">
                 <td>{{ formatDate(h.work_date) }}</td>
                 <td class="mono">{{ h.hours }}h</td>
-                <td>{{ h.tariff_name }}</td>
+                <td>{{ h.tariff_name }} · {{ rateLabel(h) }}</td>
                 <td class="mono amount">€ {{ formatAmount(calcGross(h)) }}</td>
               </tr>
             </tbody>
@@ -338,6 +338,10 @@ function collabStatusLabel(s) {
   return { draft: 'Bozza', sent: 'Inviata', paid: 'Pagata' }[s] ?? s;
 }
 
+function rateLabel(h) {
+  return `€ ${formatAmount(h.hourly_rate)} ${h.rate_type === 'daily' ? '/giorno' : '/h'}`;
+}
+
 function calcGross(h) {
   const rate = h.rate_type === 'daily' ? parseFloat(h.hourly_rate) / 8 : parseFloat(h.hourly_rate);
   return parseFloat(h.hours) * rate;
@@ -359,15 +363,16 @@ async function loadAdmin() {
   if (clients.status === 'fulfilled')       clientsCount.value       = clients.value.data.filter(c => c.is_active).length;
 
   if (hours.status === 'fulfilled') {
-    // Raggruppa per cliente solo il mese corrente
+    // Raggruppa per cliente+tariffa per mantenere la tariffa visualizzata coerente.
     const thisMonth = hours.value.data.filter(h => {
       const d = new Date(h.work_date);
       return d.getFullYear() === year && d.getMonth() + 1 === month;
     });
     const map = {};
     for (const h of thisMonth) {
-      if (!map[h.client_id]) map[h.client_id] = { ...h, total_hours: 0 };
-      map[h.client_id].total_hours += parseFloat(h.hours);
+      const key = `${h.client_id}-${h.tariff_id}`;
+      if (!map[key]) map[key] = { ...h, total_hours: 0 };
+      map[key].total_hours += parseFloat(h.hours);
     }
     myHoursThisMonth.value = Object.values(map);
   }
