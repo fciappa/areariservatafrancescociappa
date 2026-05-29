@@ -17,16 +17,20 @@ class HoursController extends Controller
         if ($user->role === 'admin') {
             $rows = DB::select('
                 SELECT ch.*, c.first_name, c.last_name,
+                       p.name AS project_name,
                        t.name AS tariff_name, t.hourly_rate, t.rate_type, t.tax_inclusive
                 FROM collaborator_hours ch
                 LEFT JOIN collaborators c ON c.id = ch.collaborator_id
+                LEFT JOIN projects p ON p.id = ch.project_id
                 LEFT JOIN tariffs t ON t.id = ch.tariff_id
                 ORDER BY ch.work_date DESC
             ');
         } else {
             $rows = DB::select('
-                SELECT ch.*, t.name AS tariff_name, t.hourly_rate, t.rate_type, t.tax_inclusive
+                SELECT ch.*, p.name AS project_name,
+                       t.name AS tariff_name, t.hourly_rate, t.rate_type, t.tax_inclusive
                 FROM collaborator_hours ch
+                LEFT JOIN projects p ON p.id = ch.project_id
                 JOIN tariffs t ON t.id = ch.tariff_id
                 WHERE ch.collaborator_id = ?
                 ORDER BY ch.work_date DESC

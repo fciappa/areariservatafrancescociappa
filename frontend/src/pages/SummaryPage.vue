@@ -6,7 +6,7 @@
         <p class="page-sub">Panoramica delle attività per mese</p>
       </div>
       <!-- Selettore mese -->
-      <input v-model="selectedMonth" type="month" class="month-picker" />
+      <input v-if="auth.isAdmin" v-model="selectedMonth" type="month" class="month-picker" />
     </div>
 
     <!-- ── VISTA ADMIN ─────────────────────────────────── -->
@@ -139,15 +139,17 @@
       <section class="card">
         <div class="card-header">
           <h3>🗓️ Dettaglio ore — {{ monthLabel }}</h3>
+          <input v-model="selectedMonth" type="month" class="month-picker" />
         </div>
         <div v-if="loading" class="skeleton-list"><div v-for="i in 5" :key="i" class="skeleton-row" /></div>
         <div v-else-if="!collabData.hours.length" class="empty-small">Nessuna ora registrata questo mese.</div>
         <table v-else class="mini-table">
-          <thead><tr><th>Data</th><th>Ore</th><th>Tariffa</th><th>€/h</th><th>Lordo</th><th>4%</th><th></th></tr></thead>
+          <thead><tr><th>Data</th><th>Ore</th><th>Progetto</th><th>Tariffa</th><th>€/h</th><th>Lordo</th><th>4%</th><th></th></tr></thead>
           <tbody>
             <tr v-for="h in collabData.hours" :key="h.id" :class="{ 'row-invoiced': h.invoiced_at }">
               <td class="mono">{{ formatDate(h.work_date) }}</td>
               <td class="mono">{{ h.hours }}h</td>
+              <td>{{ h.project_name || '—' }}</td>
               <td>{{ h.tariff_name }}</td>
               <td class="mono">€ {{ fmt(h.hourly_rate) }}</td>
               <td class="mono green">€ {{ fmt(calcGross(h)) }}</td>
@@ -160,7 +162,7 @@
           <tfoot>
             <tr class="tfoot-total">
               <td colspan="2" class="mono">{{ collabData.totalHours }}h</td>
-              <td colspan="2"></td>
+              <td colspan="3"></td>
               <td class="mono green fw">€ {{ fmt(collabData.totalGross) }}</td>
               <td class="mono muted">€ {{ fmt(collabData.totalTax) }}</td>
               <td></td>
