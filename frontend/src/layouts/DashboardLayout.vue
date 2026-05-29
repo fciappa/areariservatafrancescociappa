@@ -20,9 +20,16 @@
 
       <nav class="sidebar-nav">
         <NavLink to="/" icon="📊" label="Dashboard" @click="sidebarOpen = false" />
-        <NavLink to="/summary" icon="📅" label="Riepilogo mensile" @click="sidebarOpen = false" />
 
-        <template v-if="!auth.isAdmin">
+        <template v-if="auth.isAdmin || auth.isCollaborator">
+          <NavLink to="/summary" icon="📅" label="Riepilogo mensile" @click="sidebarOpen = false" />
+        </template>
+
+        <template v-if="auth.isReferent">
+          <NavLink to="/referent-overview" icon="📉" label="Controllo uscite" @click="sidebarOpen = false" />
+        </template>
+
+        <template v-if="auth.isCollaborator">
           <div class="nav-group-label">Le mie attività</div>
           <NavLink to="/collab-my-hours" icon="⏱️" label="Le mie ore" @click="sidebarOpen = false" />
           <NavLink to="/my-invoices" icon="📄" label="Le mie fatture" @click="sidebarOpen = false" />
@@ -53,7 +60,7 @@
             <div class="user-name">
               {{ (!auth.isAdmin && auth.user?.first_name) ? `${auth.user.first_name} ${auth.user.last_name}` : auth.user?.username }}
             </div>
-            <div class="user-role">{{ auth.user?.role === 'admin' ? 'Amministratore' : 'Collaboratore' }}</div>
+            <div class="user-role">{{ roleLabel }}</div>
           </div>
         </div>
         <button class="btn-logout" @click="handleLogout">Esci</button>
@@ -78,10 +85,16 @@ const router      = useRouter();
 const sidebarOpen = ref(false);
 
 const userInitials = computed(() => {
-  if (!auth.isAdmin && auth.user?.first_name) {
+  if (auth.isCollaborator && auth.user?.first_name) {
     return ((auth.user.first_name[0] ?? '') + (auth.user.last_name?.[0] ?? '')).toUpperCase();
   }
   return (auth.user?.username ?? '?').slice(0, 2).toUpperCase();
+});
+
+const roleLabel = computed(() => {
+  if (auth.user?.role === 'admin') return 'Amministratore';
+  if (auth.user?.role === 'referent') return 'Referente';
+  return 'Collaboratore';
 });
 
 async function handleLogout() {

@@ -20,9 +20,10 @@ const routes = [
       { path: 'collab-invoices',       component: () => import('../pages/CollabInvoicesPage.vue'),   meta: { adminOnly: true } },
       { path: 'collab-invoices/new',   component: () => import('../pages/NewCollabInvoicePage.vue'), meta: { adminOnly: true } },
       { path: 'users',component: () => import('../pages/UsersPage.vue'),          meta: { adminOnly: true } },
-      { path: 'summary',        component: () => import('../pages/SummaryPage.vue') },
-      { path: 'collab-my-hours', component: () => import('../pages/CollabMyHoursPage.vue') },
-      { path: 'my-invoices',     component: () => import('../pages/MyInvoicesPage.vue') },
+      { path: 'summary',        component: () => import('../pages/SummaryPage.vue'),        meta: { roles: ['admin', 'collaborator'] } },
+      { path: 'collab-my-hours', component: () => import('../pages/CollabMyHoursPage.vue'), meta: { roles: ['collaborator'] } },
+      { path: 'my-invoices',     component: () => import('../pages/MyInvoicesPage.vue'),     meta: { roles: ['collaborator'] } },
+      { path: 'referent-overview', component: () => import('../pages/ReferentOverviewPage.vue'), meta: { roles: ['referent'] } },
     ],
   },
 
@@ -38,6 +39,7 @@ router.beforeEach((to) => {
   const auth = useAuthStore();
   if (!to.meta.public && !auth.isLoggedIn) return '/login';
   if (to.meta.adminOnly && !auth.isAdmin)  return '/';
+  if (to.meta.roles && !to.meta.roles.includes(auth.user?.role)) return '/';
 });
 
 export default router;

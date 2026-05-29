@@ -5,6 +5,12 @@
         <h2>Benvenuto, {{ auth.user?.username }} 👋</h2>
         <p class="page-sub">{{ todayFormatted }}</p>
       </div>
+      <input
+        v-if="auth.isReferent"
+        v-model="selectedMonth"
+        type="month"
+        class="month-picker"
+      />
     </header>
 
     <!-- KPI cards -->
@@ -76,6 +82,33 @@
       </div>
     </template>
 
+    <!-- Vista referente -->
+    <template v-else-if="auth.isReferent">
+      <section class="card">
+        <div class="card-header">
+          <h3>📉 Progetti sotto controllo</h3>
+          <RouterLink to="/referent-overview" class="card-link">Dettaglio uscite →</RouterLink>
+        </div>
+        <div v-if="loading" class="skeleton-list">
+          <div v-for="i in 4" :key="i" class="skeleton-row" />
+        </div>
+        <div v-else-if="!referentSummary.length" class="empty-state">Nessun progetto assegnato.</div>
+        <table v-else class="mini-table">
+          <thead>
+            <tr><th>Progetto</th><th>Ore da fatturare</th><th>€ da fatturare</th><th>€ fatturate</th></tr>
+          </thead>
+          <tbody>
+            <tr v-for="p in referentSummary" :key="p.id">
+              <td>{{ p.name }}</td>
+              <td class="mono">{{ formatAmount(p.to_invoice_hours) }}h</td>
+              <td class="mono amount">€ {{ formatAmount(p.to_invoice_gross) }}</td>
+              <td class="mono">€ {{ formatAmount(p.invoiced_gross) }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+    </template>
+
     <!-- Vista collaboratore -->
     <template v-else>
       <div class="two-col">
@@ -133,7 +166,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useAuthStore } from '../stores/auth.js';
 import api from '../services/api.js';
 import KpiCard from '../components/KpiCard.vue';
@@ -147,12 +180,14 @@ const recentInvoices    = ref([]);
 const myHoursThisMonth  = ref([]);
 const collabHours        = ref([]);
 const collabInvoices     = ref([]);
+const referentSummary    = ref([]);
 const collaboratorsCount = ref(0);
 const clientsCount       = ref(0);
 
 const now = new Date();
 const year  = now.getFullYear();
 const month = now.getMonth() + 1;
+const selectedMonth = ref(now.toISOString().slice(0, 7));
 
 const todayFormatted = computed(() =>
   now.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
@@ -195,6 +230,38 @@ const kpiCards = computed(() => {
       },
     ];
   }
+  if (auth.isReferent) {
+    return [
+      {
+        icon: '📁',
+        label: 'Progetti assegnati',
+        value: referentSummary.value.length,
+        sub: 'con monitoraggio costi',
+        color: 'blue',
+      },
+      {
+        icon: '✅',
+        label: 'Ore fatturate (mese)',
+        value: `${formatAmount(totalReferentInvoicedHours.value)}h`,
+        sub: `€ ${formatAmount(totalReferentInvoicedGross.value)}`,
+        color: 'green',
+      },
+      {
+        icon: '⏳',
+        label: 'Ore da fatturare',
+        value: `${formatAmount(totalReferentToInvoiceHours.value)}h`,
+        sub: 'incluse pending/approved',
+        color: 'orange',
+      },
+      {
+        icon: '€',
+        label: 'Da fatturare (mese)',
+        value: `€ ${formatAmount(totalReferentToInvoiceGross.value)}`,
+        sub: 'uscite previste',
+        color: 'purple',
+      },
+    ];
+  }
   return [
     {
       icon: '⏱️',
@@ -234,6 +301,22 @@ const totalCollabAmount = computed(() =>
 
 const sentInvoicesCount = computed(() =>
   collabInvoices.value.filter(i => i.status === 'sent').length
+);
+
+const totalReferentInvoicedHours = computed(() =>
+  referentSummary.value.reduce((s, p) => s + parseFloat(p.invoiced_hours || 0), 0)
+);
+
+const totalReferentToInvoiceHours = computed(() =>
+  referentSummary.value.reduce((s, p) => s + parseFloat(p.to_invoice_hours || 0), 0)
+);
+
+const totalReferentInvoicedGross = computed(() =>
+  referentSummary.value.reduce((s, p) => s + parseFloat(p.invoiced_gross || 0), 0)
+);
+
+const totalReferentToInvoiceGross = computed(() =>
+  referentSummary.value.reduce((s, p) => s + parseFloat(p.to_invoice_gross || 0), 0)
 );
 
 // Helpers
@@ -301,9 +384,25 @@ async function loadCollaborator() {
   }
 }
 
+async function loadReferent() {
+  const { data } = await api.get(`/referent/projects/summary?month=${selectedMonth.value}`);
+  referentSummary.value = data;
+}
+
+watch(selectedMonth, async () => {
+  if (!auth.isReferent) return;
+  loading.value = true;
+  try {
+    await loadReferent();
+  } finally {
+    loading.value = false;
+  }
+});
+
 onMounted(async () => {
   try {
     if (auth.isAdmin) await loadAdmin();
+    else if (auth.isReferent) await loadReferent();
     else              await loadCollaborator();
   } finally {
     loading.value = false;
@@ -324,6 +423,20 @@ onMounted(async () => {
 
 .page-sub {
   text-transform: capitalize;
+}
+
+.month-picker {
+  padding: 0.5rem 0.875rem;
+  border: 1.5px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  outline: none;
+  background: #fff;
+  color: #374151;
+}
+
+.month-picker:focus {
+  border-color: #0f3460;
 }
 
 /* ── KPI grid ──────────────────────────────────────────── */

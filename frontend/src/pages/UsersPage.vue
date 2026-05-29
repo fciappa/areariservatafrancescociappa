@@ -42,7 +42,7 @@
             <td>{{ u.email }}</td>
             <td>
               <span :class="['badge-role', u.role]">
-                {{ u.role === 'admin' ? '🛡️ Admin' : '👥 Collaboratore' }}
+                {{ roleLabel(u.role) }}
               </span>
             </td>
             <td>{{ collabName(u.collaborator_id) || '—' }}</td>
@@ -110,6 +110,10 @@
                 <label class="radio-card-sm" :class="{ selected: form.role === 'collaborator' }">
                   <input v-model="form.role" type="radio" value="collaborator" />
                   <span>👥 Collaboratore</span>
+                </label>
+                <label class="radio-card-sm" :class="{ selected: form.role === 'referent' }">
+                  <input v-model="form.role" type="radio" value="referent" />
+                  <span>📉 Referente</span>
                 </label>
                 <label class="radio-card-sm" :class="{ selected: form.role === 'admin' }">
                   <input v-model="form.role" type="radio" value="admin" />
@@ -209,6 +213,12 @@ function formatDate(d) {
   return new Date(d).toLocaleDateString('it-IT');
 }
 
+function roleLabel(role) {
+  if (role === 'admin') return '🛡️ Admin';
+  if (role === 'referent') return '📉 Referente';
+  return '👥 Collaboratore';
+}
+
 function resetForm() {
   Object.assign(form, { username: '', email: '', password: '', role: 'collaborator', collaborator_id: '' });
   Object.assign(formErrors, { username: '', email: '', password: '' });
@@ -299,10 +309,12 @@ onMounted(load);
 .name-cell { display: flex; align-items: center; gap: 0.625rem; font-weight: 600; color: #111827; }
 .avatar { width: 2rem; height: 2rem; border-radius: 50%; color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 700; flex-shrink: 0; }
 .avatar.admin        { background: #dc2626; }
+.avatar.referent     { background: #7c3aed; }
 .avatar.collaborator { background: #0f3460; }
 
 .badge-role { display: inline-block; padding: 0.2rem 0.6rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; }
 .badge-role.admin        { background: #fee2e2; color: #991b1b; }
+.badge-role.referent     { background: #ede9fe; color: #5b21b6; }
 .badge-role.collaborator { background: #dbeafe; color: #1e40af; }
 
 .mono  { font-size: 0.82rem; }

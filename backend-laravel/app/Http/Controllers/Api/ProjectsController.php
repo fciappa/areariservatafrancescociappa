@@ -44,7 +44,18 @@ class ProjectsController extends Controller
             ORDER BY (ta.collaborator_id IS NULL) DESC, co.last_name
         ', [$id]);
 
-        return response()->json(array_merge((array) $projects[0], ['assignments' => $assignments]));
+        $referents = DB::select('
+            SELECT pr.id, pr.user_id, u.username, u.email
+            FROM project_referents pr
+            JOIN users u ON u.id = pr.user_id
+            WHERE pr.project_id = ?
+            ORDER BY u.username
+        ', [$id]);
+
+        return response()->json(array_merge((array) $projects[0], [
+            'assignments' => $assignments,
+            'referents'   => $referents,
+        ]));
     }
 
     public function store(Request $request)
@@ -133,6 +144,48 @@ class ProjectsController extends Controller
     {
         DB::table('tariff_assignments')->where('id', $assignId)->delete();
         Log::info('Projects: assegnazione rimossa', ['assign_id' => $assignId]);
+        return response()->json(['success' => true]);
+    }
+
+    public function addReferent(Request $request, int $id)
+    {
+        if (!$request->filled('user_id')) {
+            return response()->json(['message' => 'user_id obbligatorio'], 400);
+        }
+
+        $userRows = DB::select('SELECT id, role, is_active FROM users WHERE id = ? LIMIT 1', [$request->input('user_id')]);
+        $target = $userRows[0] ?? null;
+        if (!$target || $target->role !== 'referent' || !$target->is_active) {
+            return response()->json(['message' => 'Utente referente non valido'], 422);
+        }
+
+        try {
+            $refId = DB::table('project_referents')->insertGetId([
+                'project_id' => $id,
+                'user_id'    => $request->input('user_id'),
+            ]);
+            Log::info('Projects: referente assegnato', ['project_id' => $id, 'project_referent_id' => $refId, 'user_id' => $request->input('user_id')]);
+
+            $rows = DB::select('
+                SELECT pr.id, pr.user_id, u.username, u.email
+                FROM project_referents pr
+                JOIN users u ON u.id = pr.user_id
+                WHERE pr.id = ?
+            ', [$refId]);
+
+            return response()->json($rows[0], 201);
+        } catch (\Illuminate\Database\QueryException $e) {
+            if (($e->errorInfo[1] ?? null) === 1062) {
+                return response()->json(['message' => 'Referente già assegnato a questo progetto'], 409);
+            }
+            throw $e;
+        }
+    }
+
+    public function removeReferent(int $assignId)
+    {
+        DB::table('project_referents')->where('id', $assignId)->delete();
+        Log::info('Projects: referente rimosso', ['project_referent_id' => $assignId]);
         return response()->json(['success' => true]);
     }
 

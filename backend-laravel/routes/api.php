@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\ProjectsController;
 use App\Http\Controllers\Api\HoursController;
 use App\Http\Controllers\Api\InvoicesController;
 use App\Http\Controllers\Api\CollabInvoicesController;
+use App\Http\Controllers\Api\ReferentController;
 use App\Http\Controllers\Api\UsersController;
 use Illuminate\Support\Facades\Route;
 
@@ -56,6 +57,13 @@ Route::middleware('auth.jwt')->group(function () {
         Route::put('/projects/{id}',                      [ProjectsController::class, 'update']);
         Route::post('/projects/{id}/assignments',         [ProjectsController::class, 'addAssignment']);
         Route::delete('/projects/assignments/{assignId}', [ProjectsController::class, 'removeAssignment']);
+        Route::post('/projects/{id}/referents',           [ProjectsController::class, 'addReferent']);
+        Route::delete('/projects/referents/{assignId}',   [ProjectsController::class, 'removeReferent']);
+    });
+
+    Route::middleware('referent')->group(function () {
+        Route::get('/referent/projects/summary', [ReferentController::class, 'projectSummary']);
+        Route::get('/referent/projects/hours',   [ReferentController::class, 'projectHours']);
     });
 
     // Hours
