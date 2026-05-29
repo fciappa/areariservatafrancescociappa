@@ -17,6 +17,7 @@ $app = Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'auth.jwt' => \App\Http\Middleware\JwtAuthenticate::class,
             'admin'    => \App\Http\Middleware\AdminOnly::class,
+            'referent' => \App\Http\Middleware\ReferentOnly::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

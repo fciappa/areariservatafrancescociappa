@@ -11,10 +11,30 @@
       </div>
     </div>
 
-    <!-- Filtro mese -->
+    <!-- Filtri -->
     <div class="toolbar">
+      <select v-model="filterProject" class="select-input">
+        <option value="">Tutti i progetti</option>
+        <option v-for="p in projects" :key="p.id" :value="p.id">{{ p.name }}</option>
+      </select>
       <input v-model="filterMonth" type="month" class="select-input" />
-      <button v-if="filterMonth" class="btn-ghost" @click="filterMonth = ''">✕ Pulisci</button>
+      <button v-if="filterProject || filterMonth" class="btn-ghost" @click="clearFilters">✕ Pulisci</button>
+    </div>
+
+    <!-- Riepilogo -->
+    <div v-if="filtered.length" class="summary-bar">
+      <div class="summary-item">
+        <span class="summary-label">Ore totali</span>
+        <span class="summary-value">{{ totalHours }}h</span>
+      </div>
+      <div class="summary-item">
+        <span class="summary-label">Importo lordo</span>
+        <span class="summary-value green">€ {{ fmt(totalGross) }}</span>
+      </div>
+      <div class="summary-item">
+        <span class="summary-label">4% ritenuta</span>
+        <span class="summary-value">€ {{ fmt(totalTax) }}</span>
+      </div>
     </div>
 
     <!-- Skeleton -->
@@ -195,6 +215,7 @@ const projects    = ref([]);
 const loading     = ref(true);
 const saving      = ref(false);
 const saveError   = ref('');
+const filterProject = ref('');
 const filterMonth = ref('');
 const today       = new Date().toISOString().slice(0, 10);
 
@@ -210,9 +231,11 @@ const WEEKDAYS = [
 ];
 
 const filtered = computed(() =>
-  hours.value.filter(h =>
-    !filterMonth.value || h.work_date.slice(0, 7) === filterMonth.value
-  )
+  hours.value.filter(h => {
+    if (filterProject.value && h.project_id != filterProject.value) return false;
+    if (filterMonth.value && h.work_date.slice(0, 7) !== filterMonth.value) return false;
+    return true;
+  })
 );
 
 const selectedProject = computed(() =>
@@ -244,17 +267,36 @@ const selectedDates = computed(() => {
   return dates;
 });
 
+const totalHours = computed(() =>
+  filtered.value.reduce((sum, h) => sum + parseFloat(h.hours || 0), 0)
+);
+const totalGross = computed(() =>
+  filtered.value.reduce((sum, h) => sum + calcGross(h), 0)
+);
+const totalTax = computed(() =>
+  filtered.value.reduce((sum, h) => sum + calcTax(h), 0)
+);
+
 function fmt(v) { return Number(v ?? 0).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 function formatDate(d) { return new Date(d).toLocaleDateString('it-IT'); }
 function calcGross(h) {
   const rate = h.rate_type === 'daily' ? parseFloat(h.hourly_rate) / 8 : parseFloat(h.hourly_rate);
   return rate * parseFloat(h.hours);
 }
+function calcTax(h) {
+  const gross = calcGross(h);
+  return h.tax_inclusive ? gross - gross / 1.04 : gross * 0.04;
+}
 function rowClass(h) {
   if (h.invoiced_at)        return 'row-invoiced';
   if (h.status === 'pending')  return 'row-pending';
   if (h.status === 'rejected') return 'row-rejected';
   return '';
+}
+
+function clearFilters() {
+  filterProject.value = '';
+  filterMonth.value = '';
 }
 
 function onProjectChange() {}
@@ -352,6 +394,17 @@ onMounted(load);
 .select-input:focus { border-color: #0f3460; }
 .btn-ghost { background: none; border: none; color: #6b7280; font-size: 0.875rem; cursor: pointer; padding: 0.5rem; border-radius: 8px; }
 .btn-ghost:hover { background: #f3f4f6; }
+
+.summary-bar {
+  display: flex; gap: 1rem; flex-wrap: wrap;
+  background: #fff; border-radius: 10px;
+  padding: 0.875rem 1.25rem; margin-bottom: 1rem;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.07);
+}
+.summary-item { display: flex; flex-direction: column; }
+.summary-label { font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #9ca3af; }
+.summary-value { font-size: 1.1rem; font-weight: 700; color: #111827; font-family: 'Courier New', monospace; }
+.summary-value.green { color: #059669; }
 
 .tariff-name { font-size: 0.8rem; color: #374151; }
 .pill { display: inline-block; padding: 0.1rem 0.4rem; border-radius: 9999px; font-size: 0.68rem; font-weight: 600; margin-left: 0.25rem; }
