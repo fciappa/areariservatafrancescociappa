@@ -146,6 +146,7 @@ class HoursController extends Controller
                 ->where('id', $id)
                 ->where('collaborator_id', $user->collaborator_id)
                 ->where('status', 'pending')
+                ->whereNull('invoiced_at')
                 ->exists();
             if (!$exists) {
                 return response()->json(['message' => 'Non modificabile'], 403);
@@ -176,7 +177,8 @@ class HoursController extends Controller
         $query = DB::table('collaborator_hours')->where('id', $id);
         if (!$isAdmin) {
             $query->where('collaborator_id', $user->collaborator_id)
-                  ->where('status', 'pending');
+                  ->where('status', 'pending')
+                  ->whereNull('invoiced_at');
         }
         $deleted = $query->delete();
         if (!$deleted) {

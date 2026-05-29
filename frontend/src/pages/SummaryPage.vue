@@ -139,12 +139,7 @@
       <section class="card">
         <div class="card-header">
           <h3>🗓️ Dettaglio ore — {{ monthLabel }}</h3>
-          <input
-            :value="monthDateValue"
-            type="date"
-            class="month-picker"
-            @input="onMonthDateInput"
-          />
+          <input v-model="selectedMonth" type="month" class="month-picker" />
         </div>
         <div v-if="loading" class="skeleton-list"><div v-for="i in 5" :key="i" class="skeleton-row" /></div>
         <div v-else-if="!collabData.hours.length" class="empty-small">Nessuna ora registrata questo mese.</div>
@@ -198,8 +193,6 @@ const monthLabel = computed(() => {
   return `${monthNames[parseInt(m) - 1]} ${y}`;
 });
 
-const monthDateValue = computed(() => `${selectedMonth.value}-01`);
-
 // ── Admin data ────────────────────────────────────────────
 const adminData = reactive({
   invoiced: 0, invoiceCount: 0, myHours: 0, collabHours: 0,
@@ -223,12 +216,6 @@ function formatDate(d) { return new Date(d).toLocaleDateString('it-IT'); }
 function statusLabel(s) { return { draft: 'Bozza', issued: 'Emessa', paid: 'Pagata' }[s] ?? s; }
 function monthName(m)  { return monthNames[parseInt(m) - 1]; }
 function monthShort(m) { return monthShorts[parseInt(m) - 1]; }
-
-function onMonthDateInput(event) {
-  const value = event.target?.value ?? '';
-  if (!value) return;
-  selectedMonth.value = value.slice(0, 7);
-}
 
 function calcGross(h) {
   const rate = h.rate_type === 'daily' ? parseFloat(h.hourly_rate) / 8 : parseFloat(h.hourly_rate);

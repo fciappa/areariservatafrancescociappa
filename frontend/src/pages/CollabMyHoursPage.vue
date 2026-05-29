@@ -17,8 +17,8 @@
         <option value="">Tutti i progetti</option>
         <option v-for="p in projects" :key="p.id" :value="p.id">{{ p.name }}</option>
       </select>
-      <input v-model="filterDate" type="date" class="select-input" />
-      <button v-if="filterProject || filterDate" class="btn-ghost" @click="clearFilters">✕ Pulisci</button>
+      <input v-model="filterMonth" type="month" class="select-input" />
+      <button v-if="filterProject || filterMonth" class="btn-ghost" @click="clearFilters">✕ Pulisci</button>
     </div>
 
     <!-- Riepilogo -->
@@ -45,7 +45,7 @@
     <!-- Empty -->
     <div v-else-if="!filtered.length" class="empty-state">
       <span>⏱️</span>
-      <p>Nessuna ora registrata{{ filterDate ? ' per questo mese' : '' }}.</p>
+      <p>Nessuna ora registrata{{ filterMonth ? ' per questo mese' : '' }}.</p>
     </div>
 
     <!-- Tabella -->
@@ -56,7 +56,7 @@
             <th>Data</th>
             <th>Ore</th>
             <th>Progetto / Tariffa</th>
-            <th>€/ora</th>
+            <th>Tariffa</th>
             <th>Lordo</th>
             <th>Stato</th>
             <th>Note</th>
@@ -73,9 +73,8 @@
                 {{ h.tax_inclusive ? '4% incl.' : '4% escl.' }}
               </span>
             </td>
-            <td class="mono" data-label="€/ora">
-              € {{ fmt(h.hourly_rate) }}
-              <span class="rate-unit">{{ h.rate_type === 'daily' ? '/g' : '/h' }}</span>
+            <td class="mono" data-label="Tariffa">
+              {{ rateLabel(h) }}
             </td>
             <td class="mono green" data-label="Lordo">€ {{ fmt(calcGross(h)) }}</td>
             <td data-label="Stato">
@@ -86,6 +85,12 @@
             </td>
             <td class="desc" data-label="Note">{{ h.description || '—' }}</td>
             <td class="actions" data-label="Azioni">
+              <button
+                v-if="!h.invoiced_at && h.status === 'pending'"
+                class="btn-icon"
+                title="Modifica"
+                @click="openEdit(h)"
+              >✏️</button>
               <button
                 v-if="!h.invoiced_at && h.status === 'pending'"
                 class="btn-icon"
@@ -103,12 +108,12 @@
       <div v-if="modal.open" class="modal-overlay" @click.self="modal.open = false">
         <div class="modal">
           <div class="modal-header">
-            <h3>{{ modal.mode === 'multi' ? 'Inserisci più giorni' : 'Inserisci ore' }}</h3>
+            <h3>{{ modal.isEdit ? 'Modifica ore' : (modal.mode === 'multi' ? 'Inserisci più giorni' : 'Inserisci ore') }}</h3>
             <button class="modal-close" @click="modal.open = false">✕</button>
           </div>
           <form class="modal-form" @submit.prevent="save">
 
-            <div class="mode-tabs">
+            <div v-if="!modal.isEdit" class="mode-tabs">
               <button type="button" :class="['mode-tab', modal.mode === 'single' && 'active']" @click="modal.mode = 'single'">Singolo giorno</button>
               <button type="button" :class="['mode-tab', modal.mode === 'multi' && 'active']" @click="modal.mode = 'multi'">Più giorni</button>
             </div>
@@ -196,7 +201,7 @@
               <button type="button" class="btn-secondary" @click="modal.open = false">Annulla</button>
               <button type="submit" class="btn-primary" :disabled="saving || (modal.mode === 'multi' && !selectedDates.length)">
                 <span v-if="saving" class="spinner" />
-                {{ saving ? 'Invio…' : modal.mode === 'multi' ? `Invia ${selectedDates.length} giorni` : 'Invia per approvazione' }}
+                {{ saving ? 'Salvataggio…' : modal.isEdit ? 'Salva modifiche' : (modal.mode === 'multi' ? `Invia ${selectedDates.length} giorni` : 'Invia per approvazione') }}
               </button>
             </div>
           </form>
@@ -216,10 +221,10 @@ const loading     = ref(true);
 const saving      = ref(false);
 const saveError   = ref('');
 const filterProject = ref('');
-const filterDate = ref('');
+const filterMonth = ref('');
 const today       = new Date().toISOString().slice(0, 10);
 
-const modal = reactive({ open: false, mode: 'single' });
+const modal = reactive({ open: false, mode: 'single', isEdit: false, editId: null, editTariffId: null });
 const form  = reactive({ work_date: today, hours: '', project_id: '', description: '' });
 const err   = reactive({ work_date: '', hours: '', project_id: '' });
 const multiForm        = reactive({ date_from: today, date_to: today });
@@ -233,7 +238,7 @@ const WEEKDAYS = [
 const filtered = computed(() =>
   hours.value.filter(h => {
     if (filterProject.value && h.project_id != filterProject.value) return false;
-    if (filterDate.value && h.work_date.slice(0, 7) !== filterDate.value.slice(0, 7)) return false;
+    if (filterMonth.value && h.work_date.slice(0, 7) !== filterMonth.value) return false;
     return true;
   })
 );
@@ -279,6 +284,10 @@ const totalTax = computed(() =>
 
 function fmt(v) { return Number(v ?? 0).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 function formatDate(d) { return new Date(d).toLocaleDateString('it-IT'); }
+function rateLabel(h) {
+  const unit = h.rate_type === 'daily' ? '/giorno' : '/h';
+  return `€ ${fmt(h.hourly_rate)} ${unit}`;
+}
 function calcGross(h) {
   const rate = h.rate_type === 'daily' ? parseFloat(h.hourly_rate) / 8 : parseFloat(h.hourly_rate);
   return rate * parseFloat(h.hours);
@@ -296,7 +305,7 @@ function rowClass(h) {
 
 function clearFilters() {
   filterProject.value = '';
-  filterDate.value = '';
+  filterMonth.value = '';
 }
 
 function onProjectChange() {}
@@ -314,6 +323,9 @@ function openNew() {
   Object.assign(multiForm, { date_from: today, date_to: today });
   selectedWeekdays.value = [1, 2, 3, 4, 5];
   saveError.value = '';
+  modal.isEdit = false;
+  modal.editId = null;
+  modal.editTariffId = null;
   modal.mode = 'single';
   modal.open = true;
 }
@@ -324,7 +336,26 @@ function openMulti() {
   Object.assign(multiForm, { date_from: today, date_to: today });
   selectedWeekdays.value = [1, 2, 3, 4, 5];
   saveError.value = '';
+  modal.isEdit = false;
+  modal.editId = null;
+  modal.editTariffId = null;
   modal.mode = 'multi';
+  modal.open = true;
+}
+
+function openEdit(h) {
+  Object.assign(form, {
+    work_date: h.work_date,
+    hours: h.hours,
+    project_id: String(h.project_id ?? ''),
+    description: h.description ?? '',
+  });
+  Object.assign(err,  { work_date: '', hours: '', project_id: '' });
+  saveError.value = '';
+  modal.mode = 'single';
+  modal.isEdit = true;
+  modal.editId = h.id;
+  modal.editTariffId = h.tariff_id;
   modal.open = true;
 }
 
@@ -333,7 +364,15 @@ async function save() {
   const p = selectedProject.value;
   saving.value = true; saveError.value = '';
   try {
-    if (modal.mode === 'multi') {
+    if (modal.isEdit) {
+      await api.put(`/hours/collaborators/${modal.editId}`, {
+        project_id:  form.project_id,
+        tariff_id:   p?.tariff_id ?? modal.editTariffId,
+        work_date:   form.work_date,
+        hours:       form.hours,
+        description: form.description,
+      });
+    } else if (modal.mode === 'multi') {
       if (!selectedDates.value.length) {
         saveError.value = 'Nessun giorno selezionato nel range.';
         return;
