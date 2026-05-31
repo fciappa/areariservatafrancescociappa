@@ -161,7 +161,9 @@ class ProjectsController extends Controller
 
             return response()->json($rows[0], 201);
         } catch (\Illuminate\Database\QueryException $e) {
-            if (($e->errorInfo[1] ?? null) === 1062) {
+            $sqlState = (string) ($e->errorInfo[0] ?? '');
+            $driverCode = (int) ($e->errorInfo[1] ?? 0);
+            if ($driverCode === 1062 || $driverCode === 19 || $sqlState === '23000') {
                 Log::warning('Projects: assegnazione duplicata', ['project_id' => $id, 'tariff_id' => $request->input('tariff_id'), 'collaborator_id' => $request->input('collaborator_id')]);
                 return response()->json([
                     'message' => 'Assegnazione già esistente per questo progetto e collaboratore'
@@ -206,7 +208,9 @@ class ProjectsController extends Controller
 
             return response()->json($rows[0], 201);
         } catch (\Illuminate\Database\QueryException $e) {
-            if (($e->errorInfo[1] ?? null) === 1062) {
+            $sqlState = (string) ($e->errorInfo[0] ?? '');
+            $driverCode = (int) ($e->errorInfo[1] ?? 0);
+            if ($driverCode === 1062 || $driverCode === 19 || $sqlState === '23000') {
                 return response()->json(['message' => 'Referente già assegnato a questo progetto'], 409);
             }
             throw $e;
