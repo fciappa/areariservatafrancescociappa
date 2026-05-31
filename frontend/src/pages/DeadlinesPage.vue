@@ -44,35 +44,41 @@
             <th><button class="th-sort" @click="toggleSort('item_type')">Tipo <span class="sort-indicator">{{ sortIndicator('item_type') }}</span></button></th>
             <th><button class="th-sort" @click="toggleSort('description')">Descrizione <span class="sort-indicator">{{ sortIndicator('description') }}</span></button></th>
             <th><button class="th-sort" @click="toggleSort('linked_to')">Collegato a <span class="sort-indicator">{{ sortIndicator('linked_to') }}</span></button></th>
-            <th><button class="th-sort" @click="toggleSort('avada_version')">Avada <span class="sort-indicator">{{ sortIndicator('avada_version') }}</span></button></th>
-            <th><button class="th-sort" @click="toggleSort('php_version')">PHP <span class="sort-indicator">{{ sortIndicator('php_version') }}</span></button></th>
-            <th><button class="th-sort" @click="toggleSort('mysql_version')">MySQL <span class="sort-indicator">{{ sortIndicator('mysql_version') }}</span></button></th>
-            <th><button class="th-sort" @click="toggleSort('wp_version')">WP <span class="sort-indicator">{{ sortIndicator('wp_version') }}</span></button></th>
-            <th><button class="th-sort" @click="toggleSort('test_email')">Test email <span class="sort-indicator">{{ sortIndicator('test_email') }}</span></button></th>
             <th><button class="th-sort" @click="toggleSort('notes')">Note <span class="sort-indicator">{{ sortIndicator('notes') }}</span></button></th>
             <th><button class="th-sort" @click="toggleSort('amount')">Importo <span class="sort-indicator">{{ sortIndicator('amount') }}</span></button></th>
             <th>Azioni</th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="d in filtered" :key="d.id">
-            <td class="mono">{{ formatDate(d.due_date) }}</td>
-            <td class="fw">{{ d.company_name }}</td>
-            <td>{{ d.item_type }}</td>
-            <td>{{ d.description }}</td>
-            <td>{{ d.linked_to || '—' }}</td>
-            <td>{{ d.avada_version || '—' }}</td>
-            <td>{{ d.php_version || '—' }}</td>
-            <td>{{ d.mysql_version || '—' }}</td>
-            <td>{{ d.wp_version || '—' }}</td>
-            <td>{{ d.test_email || '—' }}</td>
-            <td class="notes">{{ d.notes || '—' }}</td>
-            <td class="mono amount">{{ d.amount != null ? formatAmount(d.amount) : '—' }}</td>
-            <td class="actions">
-              <button class="btn-icon" title="Rinnova data +1 anno" @click="renewDate(d)">🔁</button>
-              <button class="btn-icon" title="Modifica scadenza" @click="openEdit(d)">✏️</button>
-            </td>
-          </tr>
+          <template v-for="d in filtered" :key="d.id">
+            <tr>
+              <td class="mono">{{ formatDate(d.due_date) }}</td>
+              <td class="fw">{{ d.company_name }}</td>
+              <td>{{ d.item_type }}</td>
+              <td>{{ d.description }}</td>
+              <td>{{ d.linked_to || '—' }}</td>
+              <td class="notes">{{ d.notes || '—' }}</td>
+              <td class="mono amount">{{ d.amount != null ? formatAmount(d.amount) : '—' }}</td>
+              <td class="actions">
+                <button class="btn-icon" :title="isExpanded(d.id) ? 'Nascondi dettagli tecnici' : 'Mostra dettagli tecnici'" @click="toggleDetails(d.id)">
+                  {{ isExpanded(d.id) ? '▴' : '▾' }}
+                </button>
+                <button class="btn-icon" title="Rinnova data +1 anno" @click="renewDate(d)">🔁</button>
+                <button class="btn-icon" title="Modifica scadenza" @click="openEdit(d)">✏️</button>
+              </td>
+            </tr>
+            <tr v-if="isExpanded(d.id)" class="detail-row" :key="`detail-${d.id}`">
+              <td colspan="8">
+                <div class="tech-grid">
+                  <div class="tech-item"><span class="tech-label">Avada</span><span class="tech-value">{{ d.avada_version || '—' }}</span></div>
+                  <div class="tech-item"><span class="tech-label">PHP</span><span class="tech-value">{{ d.php_version || '—' }}</span></div>
+                  <div class="tech-item"><span class="tech-label">MySQL</span><span class="tech-value">{{ d.mysql_version || '—' }}</span></div>
+                  <div class="tech-item"><span class="tech-label">WP</span><span class="tech-value">{{ d.wp_version || '—' }}</span></div>
+                  <div class="tech-item"><span class="tech-label">Test email</span><span class="tech-value">{{ d.test_email || '—' }}</span></div>
+                </div>
+              </td>
+            </tr>
+          </template>
         </tbody>
       </table>
     </div>
@@ -207,6 +213,7 @@ const search = ref('');
 const selectedClientId = ref('');
 const sortKey = ref(sortPreference.key);
 const sortDirection = ref(sortPreference.direction);
+const expandedIds = ref([]);
 
 const modalState = reactive({ open: false, isNew: true, id: null });
 
@@ -224,14 +231,16 @@ const sortLabels = {
   item_type: 'Tipo',
   description: 'Descrizione',
   linked_to: 'Collegato a',
-  avada_version: 'Avada',
-  php_version: 'PHP',
-  mysql_version: 'MySQL',
-  wp_version: 'WP',
-  test_email: 'Test email',
   notes: 'Note',
   amount: 'Importo',
 };
+
+const visibleSortKeys = ['due_date', 'company_name', 'item_type', 'description', 'linked_to', 'notes', 'amount'];
+if (!visibleSortKeys.includes(sortKey.value)) {
+  sortKey.value = 'due_date';
+  sortDirection.value = 'asc';
+  saveSortPreference(sortKey.value, sortDirection.value);
+}
 
 const activeSortLabel = computed(() => {
   const label = sortLabels[sortKey.value] ?? sortKey.value;
@@ -279,6 +288,18 @@ function toggleSort(key) {
 function sortIndicator(key) {
   if (sortKey.value !== key) return '↕';
   return sortDirection.value === 'asc' ? '↑' : '↓';
+}
+
+function isExpanded(id) {
+  return expandedIds.value.includes(id);
+}
+
+function toggleDetails(id) {
+  if (isExpanded(id)) {
+    expandedIds.value = expandedIds.value.filter((x) => x !== id);
+    return;
+  }
+  expandedIds.value = [...expandedIds.value, id];
 }
 
 function emptyForm() {
@@ -530,6 +551,39 @@ onMounted(load);
   align-items: center;
 }
 
+.detail-row td {
+  background: #f8fafc;
+  border-top: 0;
+}
+
+.tech-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(120px, 1fr));
+  gap: 0.5rem;
+}
+
+.tech-item {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 0.5rem 0.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.tech-label {
+  font-size: 0.72rem;
+  color: #6b7280;
+  font-weight: 700;
+}
+
+.tech-value {
+  font-size: 0.85rem;
+  color: #111827;
+  font-weight: 600;
+}
+
 .triple-row {
   grid-template-columns: repeat(3, 1fr);
 }
@@ -537,6 +591,10 @@ onMounted(load);
 @media (max-width: 960px) {
   .sort-badge {
     margin-left: 0;
+  }
+
+  .tech-grid {
+    grid-template-columns: 1fr 1fr;
   }
 
   .triple-row {
