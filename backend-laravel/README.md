@@ -4,6 +4,10 @@ Backend PHP/Laravel che sostituisce il precedente backend Node.js/Express per la
 
 ## Setup locale
 
+## Documentazione tecnica
+
+- Validazione API centralizzata: `docs/api-validation.md`
+
 ### Requisiti
 - PHP 8.1+
 - Composer
