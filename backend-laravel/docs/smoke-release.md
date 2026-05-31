@@ -56,6 +56,13 @@ Il report contiene:
 - esito complessivo
 - tabella check `PASS/FAIL` con dettagli
 
+## Artifact in GitHub Actions
+
+Nel workflow CI backend il report viene pubblicato automaticamente come artifact `smoke-report`.
+
+- Workflow: `.github/workflows/backend-ci.yml`
+- Artifact: `smoke-report` (file `backend-laravel/storage/logs/smoke-report.md`)
+
 ## Exit code
 
 - `0` tutti i check passati

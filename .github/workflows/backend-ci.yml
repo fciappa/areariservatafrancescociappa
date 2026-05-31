@@ -36,3 +36,27 @@ jobs:
 
       - name: Run backend tests
         run: php vendor/bin/phpunit --configuration phpunit.xml
+
+      - name: Run smoke API and generate markdown report
+        run: |
+          php artisan serve --host=127.0.0.1 --port=8000 > /tmp/laravel-smoke.log 2>&1 &
+          SERVER_PID=$!
+          sleep 3
+
+          set +e
+          pwsh -File scripts/smoke-api.ps1 -BaseUrl "http://127.0.0.1:8000" -SkipAuthChecks -ReportPath "storage/logs/smoke-report.md"
+          SMOKE_EXIT=$?
+          set -e
+
+          kill $SERVER_PID || true
+          wait $SERVER_PID 2>/dev/null || true
+
+          exit $SMOKE_EXIT
+
+      - name: Upload smoke markdown report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-report
+          path: backend-laravel/storage/logs/smoke-report.md
+          if-no-files-found: warn
