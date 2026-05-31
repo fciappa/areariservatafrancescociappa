@@ -21,6 +21,9 @@
           {{ c.company_name }}
         </option>
       </select>
+      <div class="sort-badge" :class="sortDirection === 'asc' ? 'asc' : 'desc'">
+        Ordinato per: {{ activeSortLabel }}
+      </div>
     </div>
 
     <div v-if="loading" class="skeleton-list">
@@ -36,18 +39,18 @@
       <table class="data-table deadlines-table">
         <thead>
           <tr>
-            <th>Scadenza</th>
-            <th>Cliente</th>
-            <th>Tipo</th>
-            <th>Descrizione</th>
-            <th>Collegato a</th>
-            <th>Avada</th>
-            <th>PHP</th>
-            <th>MySQL</th>
-            <th>WP</th>
-            <th>Test email</th>
-            <th>Note</th>
-            <th>Importo</th>
+            <th><button class="th-sort" @click="toggleSort('due_date')">Scadenza <span class="sort-indicator">{{ sortIndicator('due_date') }}</span></button></th>
+            <th><button class="th-sort" @click="toggleSort('company_name')">Cliente <span class="sort-indicator">{{ sortIndicator('company_name') }}</span></button></th>
+            <th><button class="th-sort" @click="toggleSort('item_type')">Tipo <span class="sort-indicator">{{ sortIndicator('item_type') }}</span></button></th>
+            <th><button class="th-sort" @click="toggleSort('description')">Descrizione <span class="sort-indicator">{{ sortIndicator('description') }}</span></button></th>
+            <th><button class="th-sort" @click="toggleSort('linked_to')">Collegato a <span class="sort-indicator">{{ sortIndicator('linked_to') }}</span></button></th>
+            <th><button class="th-sort" @click="toggleSort('avada_version')">Avada <span class="sort-indicator">{{ sortIndicator('avada_version') }}</span></button></th>
+            <th><button class="th-sort" @click="toggleSort('php_version')">PHP <span class="sort-indicator">{{ sortIndicator('php_version') }}</span></button></th>
+            <th><button class="th-sort" @click="toggleSort('mysql_version')">MySQL <span class="sort-indicator">{{ sortIndicator('mysql_version') }}</span></button></th>
+            <th><button class="th-sort" @click="toggleSort('wp_version')">WP <span class="sort-indicator">{{ sortIndicator('wp_version') }}</span></button></th>
+            <th><button class="th-sort" @click="toggleSort('test_email')">Test email <span class="sort-indicator">{{ sortIndicator('test_email') }}</span></button></th>
+            <th><button class="th-sort" @click="toggleSort('notes')">Note <span class="sort-indicator">{{ sortIndicator('notes') }}</span></button></th>
+            <th><button class="th-sort" @click="toggleSort('amount')">Importo <span class="sort-indicator">{{ sortIndicator('amount') }}</span></button></th>
           </tr>
         </thead>
         <tbody>
@@ -165,8 +168,30 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import api from '../services/api.js';
+
+const SORT_STORAGE_KEY = 'deadlines.sort';
+
+function loadSortPreference() {
+  try {
+    const raw = localStorage.getItem(SORT_STORAGE_KEY);
+    if (!raw) return { key: 'due_date', direction: 'asc' };
+
+    const parsed = JSON.parse(raw);
+    const key = String(parsed?.key ?? 'due_date');
+    const direction = parsed?.direction === 'desc' ? 'desc' : 'asc';
+    return { key, direction };
+  } catch {
+    return { key: 'due_date', direction: 'asc' };
+  }
+}
+
+function saveSortPreference(key, direction) {
+  localStorage.setItem(SORT_STORAGE_KEY, JSON.stringify({ key, direction }));
+}
+
+const sortPreference = loadSortPreference();
 
 const deadlines = ref([]);
 const clients = ref([]);
@@ -175,6 +200,8 @@ const saving = ref(false);
 const saveError = ref('');
 const search = ref('');
 const selectedClientId = ref('');
+const sortKey = ref(sortPreference.key);
+const sortDirection = ref(sortPreference.direction);
 
 const modal = reactive({ open: false });
 
@@ -186,9 +213,30 @@ const formErrors = reactive({
   description: '',
 });
 
+const sortLabels = {
+  due_date: 'Scadenza',
+  company_name: 'Cliente',
+  item_type: 'Tipo',
+  description: 'Descrizione',
+  linked_to: 'Collegato a',
+  avada_version: 'Avada',
+  php_version: 'PHP',
+  mysql_version: 'MySQL',
+  wp_version: 'WP',
+  test_email: 'Test email',
+  notes: 'Note',
+  amount: 'Importo',
+};
+
+const activeSortLabel = computed(() => {
+  const label = sortLabels[sortKey.value] ?? sortKey.value;
+  const direction = sortDirection.value === 'asc' ? '↑ crescente' : '↓ decrescente';
+  return `${label} (${direction})`;
+});
+
 const filtered = computed(() => {
   const q = search.value.trim().toLowerCase();
-  return deadlines.value.filter((d) => {
+  const rows = deadlines.value.filter((d) => {
     if (selectedClientId.value && String(d.client_id) !== selectedClientId.value) return false;
     if (!q) return true;
 
@@ -207,7 +255,26 @@ const filtered = computed(() => {
       .toLowerCase()
       .includes(q);
   });
+
+  return rows;
 });
+
+function toggleSort(key) {
+  if (sortKey.value === key) {
+    sortDirection.value = sortDirection.value === 'asc' ? 'desc' : 'asc';
+    saveSortPreference(sortKey.value, sortDirection.value);
+    return;
+  }
+
+  sortKey.value = key;
+  sortDirection.value = 'asc';
+  saveSortPreference(sortKey.value, sortDirection.value);
+}
+
+function sortIndicator(key) {
+  if (sortKey.value !== key) return '↕';
+  return sortDirection.value === 'asc' ? '↑' : '↓';
+}
 
 function emptyForm() {
   return {
@@ -280,7 +347,13 @@ async function load() {
   loading.value = true;
   try {
     const [deadlinesRes, clientsRes] = await Promise.all([
-      api.get('/deadlines'),
+      api.get('/deadlines', {
+        params: {
+          client_id: selectedClientId.value || undefined,
+          sort_by: sortKey.value,
+          sort_dir: sortDirection.value,
+        },
+      }),
       api.get('/clients'),
     ]);
     deadlines.value = deadlinesRes.data;
@@ -311,6 +384,10 @@ async function save() {
     saving.value = false;
   }
 }
+
+watch([selectedClientId, sortKey, sortDirection], async () => {
+  await load();
+});
 
 onMounted(load);
 </script>
@@ -343,8 +420,47 @@ onMounted(load);
   min-width: 220px;
 }
 
+.sort-badge {
+  margin-left: auto;
+  border-radius: 9999px;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.sort-badge.asc {
+  background: #ecfdf5;
+  color: #065f46;
+  border: 1px solid #a7f3d0;
+}
+
+.sort-badge.desc {
+  background: #fef2f2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
 .deadlines-table {
   min-width: 1300px;
+}
+
+.th-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: inherit;
+  cursor: pointer;
+  padding: 0;
+}
+
+.sort-indicator {
+  font-size: 0.72rem;
+  opacity: 0.8;
 }
 
 .notes {
@@ -360,6 +476,10 @@ onMounted(load);
 }
 
 @media (max-width: 960px) {
+  .sort-badge {
+    margin-left: 0;
+  }
+
   .triple-row {
     grid-template-columns: 1fr;
   }

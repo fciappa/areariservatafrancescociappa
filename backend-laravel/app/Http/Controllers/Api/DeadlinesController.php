@@ -11,6 +11,25 @@ class DeadlinesController extends Controller
 {
     public function index(Request $request)
     {
+        $sortMap = [
+            'due_date'      => 'd.due_date',
+            'company_name'  => 'c.company_name',
+            'item_type'     => 'd.item_type',
+            'description'   => 'd.description',
+            'linked_to'     => 'd.linked_to',
+            'avada_version' => 'd.avada_version',
+            'php_version'   => 'd.php_version',
+            'mysql_version' => 'd.mysql_version',
+            'wp_version'    => 'd.wp_version',
+            'test_email'    => 'd.test_email',
+            'notes'         => 'd.notes',
+            'amount'        => 'd.amount',
+        ];
+
+        $sortBy = (string) $request->query('sort_by', 'due_date');
+        $sortDir = strtolower((string) $request->query('sort_dir', 'asc')) === 'desc' ? 'DESC' : 'ASC';
+        $sortColumn = $sortMap[$sortBy] ?? 'd.due_date';
+
         $sql = '
             SELECT d.*, c.company_name
             FROM client_deadlines d
@@ -24,7 +43,7 @@ class DeadlinesController extends Controller
             $bindings[] = (int) $request->query('client_id');
         }
 
-        $sql .= ' ORDER BY d.due_date ASC, d.id ASC ';
+        $sql .= " ORDER BY {$sortColumn} {$sortDir}, d.description ASC, d.id ASC ";
 
         $rows = DB::select($sql, $bindings);
         return response()->json($rows);
