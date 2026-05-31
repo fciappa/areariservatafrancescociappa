@@ -44,7 +44,6 @@
             <th><button class="th-sort" @click="toggleSort('item_type')">Tipo <span class="sort-indicator">{{ sortIndicator('item_type') }}</span></button></th>
             <th><button class="th-sort" @click="toggleSort('description')">Descrizione <span class="sort-indicator">{{ sortIndicator('description') }}</span></button></th>
             <th><button class="th-sort" @click="toggleSort('linked_to')">Collegato a <span class="sort-indicator">{{ sortIndicator('linked_to') }}</span></button></th>
-            <th><button class="th-sort" @click="toggleSort('notes')">Note <span class="sort-indicator">{{ sortIndicator('notes') }}</span></button></th>
             <th><button class="th-sort" @click="toggleSort('amount')">Importo <span class="sort-indicator">{{ sortIndicator('amount') }}</span></button></th>
             <th>Azioni</th>
           </tr>
@@ -57,7 +56,6 @@
               <td>{{ d.item_type }}</td>
               <td>{{ d.description }}</td>
               <td>{{ d.linked_to || '—' }}</td>
-              <td class="notes">{{ d.notes || '—' }}</td>
               <td class="mono amount">{{ d.amount != null ? formatAmount(d.amount) : '—' }}</td>
               <td class="actions">
                 <button class="btn-icon" :title="isExpanded(d.id) ? 'Nascondi dettagli tecnici' : 'Mostra dettagli tecnici'" @click="toggleDetails(d.id)">
@@ -68,13 +66,14 @@
               </td>
             </tr>
             <tr v-if="isExpanded(d.id)" class="detail-row" :key="`detail-${d.id}`">
-              <td colspan="8">
+              <td colspan="7">
                 <div class="tech-grid">
                   <div class="tech-item"><span class="tech-label">Avada</span><span class="tech-value">{{ d.avada_version || '—' }}</span></div>
                   <div class="tech-item"><span class="tech-label">PHP</span><span class="tech-value">{{ d.php_version || '—' }}</span></div>
                   <div class="tech-item"><span class="tech-label">MySQL</span><span class="tech-value">{{ d.mysql_version || '—' }}</span></div>
                   <div class="tech-item"><span class="tech-label">WP</span><span class="tech-value">{{ d.wp_version || '—' }}</span></div>
                   <div class="tech-item"><span class="tech-label">Test email</span><span class="tech-value">{{ d.test_email || '—' }}</span></div>
+                  <div class="tech-item tech-item-notes"><span class="tech-label">Note</span><span class="tech-value">{{ d.notes || '—' }}</span></div>
                 </div>
               </td>
             </tr>
@@ -231,11 +230,10 @@ const sortLabels = {
   item_type: 'Tipo',
   description: 'Descrizione',
   linked_to: 'Collegato a',
-  notes: 'Note',
   amount: 'Importo',
 };
 
-const visibleSortKeys = ['due_date', 'company_name', 'item_type', 'description', 'linked_to', 'notes', 'amount'];
+const visibleSortKeys = ['due_date', 'company_name', 'item_type', 'description', 'linked_to', 'amount'];
 if (!visibleSortKeys.includes(sortKey.value)) {
   sortKey.value = 'due_date';
   sortDirection.value = 'asc';
@@ -584,6 +582,10 @@ onMounted(load);
   font-weight: 600;
 }
 
+.tech-item-notes {
+  grid-column: span 2;
+}
+
 .triple-row {
   grid-template-columns: repeat(3, 1fr);
 }
@@ -595,6 +597,10 @@ onMounted(load);
 
   .tech-grid {
     grid-template-columns: 1fr 1fr;
+  }
+
+  .tech-item-notes {
+    grid-column: span 2;
   }
 
   .triple-row {
