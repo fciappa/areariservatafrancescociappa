@@ -52,10 +52,10 @@
           <template v-for="d in filtered" :key="d.id">
             <tr>
               <td class="mono">{{ formatDate(d.due_date) }}</td>
-              <td class="fw">{{ d.company_name }}</td>
-              <td>{{ d.item_type }}</td>
-              <td>{{ d.description }}</td>
-              <td>{{ d.linked_to || '—' }}</td>
+              <td class="fw compact-cell" :title="d.company_name">{{ d.company_name }}</td>
+              <td class="compact-cell" :title="d.item_type">{{ d.item_type }}</td>
+              <td class="compact-cell" :title="d.description">{{ d.description }}</td>
+              <td class="compact-cell" :title="d.linked_to || ''">{{ d.linked_to || '—' }}</td>
               <td class="mono amount">{{ d.amount != null ? formatAmount(d.amount) : '—' }}</td>
               <td class="actions">
                 <button class="btn-icon" :title="isExpanded(d.id) ? 'Nascondi dettagli tecnici' : 'Mostra dettagli tecnici'" @click="toggleDetails(d.id)">
@@ -513,7 +513,56 @@ onMounted(load);
 }
 
 .deadlines-table {
-  min-width: 1300px;
+  width: 100%;
+  min-width: 0;
+  table-layout: fixed;
+  font-size: 0.8rem;
+}
+
+.deadlines-table th,
+.deadlines-table td {
+  padding: 0.45rem 0.5rem;
+}
+
+.deadlines-table th:nth-child(1),
+.deadlines-table td:nth-child(1) {
+  width: 96px;
+}
+
+.deadlines-table th:nth-child(2),
+.deadlines-table td:nth-child(2) {
+  width: 130px;
+}
+
+.deadlines-table th:nth-child(3),
+.deadlines-table td:nth-child(3) {
+  width: 120px;
+}
+
+.deadlines-table th:nth-child(4),
+.deadlines-table td:nth-child(4) {
+  width: 170px;
+}
+
+.deadlines-table th:nth-child(5),
+.deadlines-table td:nth-child(5) {
+  width: 150px;
+}
+
+.deadlines-table th:nth-child(6),
+.deadlines-table td:nth-child(6) {
+  width: 92px;
+}
+
+.deadlines-table th:nth-child(7),
+.deadlines-table td:nth-child(7) {
+  width: 112px;
+}
+
+.compact-cell {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .th-sort {
@@ -593,6 +642,15 @@ onMounted(load);
 @media (max-width: 960px) {
   .sort-badge {
     margin-left: 0;
+  }
+
+  .deadlines-table {
+    font-size: 0.76rem;
+  }
+
+  .deadlines-table th,
+  .deadlines-table td {
+    padding: 0.4rem 0.4rem;
   }
 
   .tech-grid {
