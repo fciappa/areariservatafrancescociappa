@@ -62,6 +62,7 @@ Nel workflow CI backend il report viene pubblicato automaticamente come artifact
 
 - Workflow: `.github/workflows/backend-ci.yml`
 - Artifact: `smoke-report` (file `backend-laravel/storage/logs/smoke-report.md`)
+- Pull Request: commento automatico con stato CI e link al run/artifact
 
 ## Exit code
 
