@@ -90,14 +90,19 @@ class ClientsController extends Controller
 
     public function addReferents(Request $request, int $id)
     {
-        $userIds = $request->input('user_ids');
+        $data = ApiRequestValidator::validate($request, ApiValidationRules::clientAddReferents());
+
+        $userIds = $data['user_ids'] ?? null;
         if (!$userIds) {
-            $single = $request->input('user_id');
+            $single = $data['user_id'] ?? null;
             $userIds = $single ? [$single] : [];
         }
 
         if (!is_array($userIds) || empty($userIds)) {
-            return response()->json(['message' => 'user_ids obbligatorio'], 400);
+            return response()->json([
+                'message' => 'Dati non validi',
+                'errors' => ['user_ids' => ['Specificare user_ids o user_id']],
+            ], 422);
         }
 
         $clientRows = DB::select('SELECT id FROM clients WHERE id = ? LIMIT 1', [$id]);

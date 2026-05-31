@@ -50,16 +50,27 @@ class UsersController extends Controller
 
     public function changePassword(Request $request, int $id)
     {
-        DB::table('users')->where('id', $id)->update([
-            'password_hash' => Hash::make($request->input('password')),
+        $data = ApiRequestValidator::validate($request, ApiValidationRules::userChangePassword());
+
+        $updated = DB::table('users')->where('id', $id)->update([
+            'password_hash' => Hash::make($data['password']),
         ]);
+
+        if ($updated === 0) {
+            return response()->json(['message' => 'Utente non trovato'], 404);
+        }
+
         Log::info('Users: password cambiata', ['target_user_id' => $id]);
         return response()->json(['message' => 'Password aggiornata']);
     }
 
     public function toggle(int $id)
     {
-        DB::statement('UPDATE users SET is_active = NOT is_active WHERE id = ?', [$id]);
+        $updated = DB::update('UPDATE users SET is_active = NOT is_active WHERE id = ?', [$id]);
+        if ($updated === 0) {
+            return response()->json(['message' => 'Utente non trovato'], 404);
+        }
+
         Log::info('Users: toggle attivo', ['target_user_id' => $id]);
         return response()->json(['message' => 'Stato aggiornato']);
     }

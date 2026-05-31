@@ -6,6 +6,21 @@ use Illuminate\Validation\Rule;
 
 class ApiValidationRules
 {
+    public static function authLogin(): array
+    {
+        return [
+            'username' => ['required', 'string', 'max:100'],
+            'password' => ['required', 'string', 'max:255'],
+        ];
+    }
+
+    public static function authRefresh(): array
+    {
+        return [
+            'refreshToken' => ['required', 'string', 'max:1024'],
+        ];
+    }
+
     public static function clientStore(): array
     {
         return [
@@ -118,6 +133,30 @@ class ApiValidationRules
             'role'            => ['required', Rule::in(['admin', 'collaborator', 'referent'])],
             'collaborator_id' => ['nullable', 'integer', 'exists:collaborators,id'],
             'referent_id'     => ['nullable', 'integer', 'exists:referents,id'],
+        ];
+    }
+
+    public static function userChangePassword(): array
+    {
+        return [
+            'password' => ['required', 'string', 'min:8', 'max:255'],
+        ];
+    }
+
+    public static function clientAddReferents(): array
+    {
+        return [
+            'user_ids'   => ['nullable', 'array', 'min:1'],
+            'user_ids.*' => ['integer', 'exists:users,id'],
+            'user_id'    => ['nullable', 'integer', 'exists:users,id'],
+        ];
+    }
+
+    public static function projectResolveTargetTariff(): array
+    {
+        return [
+            'project_id'      => ['required', 'integer', 'exists:projects,id'],
+            'collaborator_id' => ['nullable', 'integer', 'exists:collaborators,id'],
         ];
     }
 }

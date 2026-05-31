@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Support\ApiRequestValidator;
+use App\Support\ApiValidationRules;
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
 use Illuminate\Http\Request;
@@ -34,13 +36,9 @@ class AuthController extends Controller
 
     public function login(Request $request)
     {
-        $username = $request->input('username');
-        $password = $request->input('password');
-
-        if (!$username || !$password) {
-            Log::warning('Login: credenziali mancanti', ['ip' => $request->ip()]);
-            return response()->json(['message' => 'Username e password obbligatori'], 400);
-        }
+        $data = ApiRequestValidator::validate($request, ApiValidationRules::authLogin());
+        $username = $data['username'];
+        $password = $data['password'];
 
         Log::debug('Login: tentativo', ['username' => $username, 'ip' => $request->ip()]);
 
@@ -100,11 +98,8 @@ class AuthController extends Controller
 
     public function refresh(Request $request)
     {
-        $refreshToken = $request->input('refreshToken');
-        if (!$refreshToken) {
-            Log::warning('Refresh: token mancante', ['ip' => $request->ip()]);
-            return response()->json(['message' => 'Refresh token mancante'], 400);
-        }
+        $data = ApiRequestValidator::validate($request, ApiValidationRules::authRefresh());
+        $refreshToken = $data['refreshToken'];
 
         try {
             $payload = JWT::decode($refreshToken, new Key(env('JWT_REFRESH_SECRET'), 'HS256'));

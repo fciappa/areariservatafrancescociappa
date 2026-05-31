@@ -222,12 +222,9 @@ class ProjectsController extends Controller
 
     public function resolveTargetTariff(Request $request)
     {
-        $projectId      = $request->query('project_id');
-        $collaboratorId = $request->query('collaborator_id');
-
-        if (!$projectId) {
-            return response()->json(['message' => 'project_id obbligatorio'], 400);
-        }
+        $data = ApiRequestValidator::validate($request, ApiValidationRules::projectResolveTargetTariff());
+        $projectId      = $data['project_id'];
+        $collaboratorId = $data['collaborator_id'] ?? null;
 
         // 1. Tariffa specifica per il collaboratore nel progetto
         if ($collaboratorId) {
