@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Support\ApiRequestValidator;
+use App\Support\ApiValidationRules;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -11,6 +13,8 @@ class CollabInvoicesController extends Controller
 {
     public function index(Request $request)
     {
+        $filters = ApiRequestValidator::validate($request, ApiValidationRules::collabInvoicesIndexFilters());
+
         $sql    = '
             SELECT ci.*, c.first_name, c.last_name,
                    CONCAT(c.last_name, \' \', c.first_name) AS collaborator_name
@@ -20,18 +24,18 @@ class CollabInvoicesController extends Controller
         $params = [];
         $where  = [];
 
-        if ($request->filled('year') && $request->filled('month')) {
+        if (!empty($filters['year']) && !empty($filters['month'])) {
             $where[]  = 'YEAR(ci.invoice_date) = ? AND MONTH(ci.invoice_date) = ?';
-            $params[] = $request->query('year');
-            $params[] = $request->query('month');
-        } elseif ($request->filled('year')) {
+            $params[] = $filters['year'];
+            $params[] = $filters['month'];
+        } elseif (!empty($filters['year'])) {
             $where[]  = 'YEAR(ci.invoice_date) = ?';
-            $params[] = $request->query('year');
+            $params[] = $filters['year'];
         }
 
-        if ($request->filled('collaborator_id')) {
+        if (!empty($filters['collaborator_id'])) {
             $where[]  = 'ci.collaborator_id = ?';
-            $params[] = $request->query('collaborator_id');
+            $params[] = $filters['collaborator_id'];
         }
 
         if ($where) {
@@ -62,18 +66,19 @@ class CollabInvoicesController extends Controller
 
     public function store(Request $request)
     {
-        $items     = $request->input('items', []);
+        $data      = ApiRequestValidator::validate($request, ApiValidationRules::collabInvoicesStore());
+        $items     = $data['items'];
         $invoiceId = null;
 
-        DB::transaction(function () use ($request, $items, &$invoiceId) {
+        DB::transaction(function () use ($data, $items, &$invoiceId) {
             $invoiceId = DB::table('collab_invoices')->insertGetId([
-                'collaborator_id' => $request->input('collaborator_id'),
-                'invoice_number'  => $request->input('invoice_number'),
-                'invoice_date'    => $request->input('invoice_date'),
-                'subtotal'        => $request->input('subtotal'),
-                'tax_amount'      => $request->input('tax_amount'),
-                'total'           => $request->input('total'),
-                'notes'           => $request->input('notes'),
+                'collaborator_id' => $data['collaborator_id'],
+                'invoice_number'  => $data['invoice_number'],
+                'invoice_date'    => $data['invoice_date'],
+                'subtotal'        => $data['subtotal'],
+                'tax_amount'      => $data['tax_amount'],
+                'total'           => $data['total'],
+                'notes'           => $data['notes'] ?? null,
             ]);
 
             $allCollabHourIds = [];
@@ -102,16 +107,17 @@ class CollabInvoicesController extends Controller
 
         Log::info('CollabInvoices: fattura proforma creata', [
             'id'              => $invoiceId,
-            'invoice_number'  => $request->input('invoice_number'),
-            'collaborator_id' => $request->input('collaborator_id'),
-            'total'           => $request->input('total'),
+            'invoice_number'  => $data['invoice_number'],
+            'collaborator_id' => $data['collaborator_id'],
+            'total'           => $data['total'],
         ]);
         return response()->json(['id' => $invoiceId], 201);
     }
 
     public function updateStatus(Request $request, int $id)
     {
-        $status = $request->input('status');
+        $data = ApiRequestValidator::validate($request, ApiValidationRules::collabInvoicesUpdateStatus());
+        $status = $data['status'];
         $update = ['status' => $status];
 
         if ($status === 'paid') {
@@ -162,6 +168,8 @@ class CollabInvoicesController extends Controller
 
     public function markPaid(Request $request, int $id)
     {
+        $data = ApiRequestValidator::validate($request, ApiValidationRules::collabInvoicesMarkPaid());
+
         $user = $request->attributes->get('jwt_user');
         $inv  = DB::table('collab_invoices')
             ->where('id', $id)
@@ -170,7 +178,7 @@ class CollabInvoicesController extends Controller
         if (!$inv) {
             return response()->json(['message' => 'Non trovata'], 404);
         }
-        $paidAt = $request->input('paid_at') ?? now()->toDateString();
+        $paidAt = $data['paid_at'] ?? now()->toDateString();
         DB::table('collab_invoices')->where('id', $id)->update([
             'status'  => 'paid',
             'paid_at' => $paidAt,

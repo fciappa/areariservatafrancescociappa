@@ -3,10 +3,11 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Support\ApiRequestValidator;
+use App\Support\ApiValidationRules;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Validator;
 
 class HoursController extends Controller
 {
@@ -45,17 +46,7 @@ class HoursController extends Controller
         $user    = $request->attributes->get('jwt_user');
         $isAdmin = $user->role === 'admin';
 
-        $rules = [
-            'project_id'   => 'required|integer|exists:projects,id',
-            'tariff_id'    => 'required|integer|exists:tariffs,id',
-            'work_date'    => 'required|date',
-            'hours'        => 'required|numeric|min:0.25|max:24',
-            'description'  => 'nullable|string|max:2000',
-        ];
-        if ($isAdmin) {
-            $rules['collaborator_id'] = 'required|integer|exists:collaborators,id';
-        }
-        $validated = $request->validate($rules);
+        $validated = ApiRequestValidator::validate($request, ApiValidationRules::hoursCollaboratorStore($isAdmin));
 
         $id = DB::table('collaborator_hours')->insertGetId([
             'collaborator_id' => $isAdmin ? $validated['collaborator_id'] : $user->collaborator_id,
@@ -80,29 +71,11 @@ class HoursController extends Controller
     {
         $user    = $request->attributes->get('jwt_user');
         $isAdmin = $user->role === 'admin';
-        $payload = $request->validate([
-            'rows'   => 'required|array|min:1',
-        ]);
+        $payload = ApiRequestValidator::validate($request, ApiValidationRules::hoursCollaboratorBulk($isAdmin));
         $rows    = $payload['rows'];
         $count   = 0;
 
-        foreach ($rows as $row) {
-            $validator = Validator::make($row, [
-                'project_id'      => 'required|integer|exists:projects,id',
-                'tariff_id'       => 'required|integer|exists:tariffs,id',
-                'work_date'       => 'required|date',
-                'hours'           => 'required|numeric|min:0.25|max:24',
-                'description'     => 'nullable|string|max:2000',
-                'collaborator_id' => $isAdmin ? 'required|integer|exists:collaborators,id' : 'nullable',
-            ]);
-            if ($validator->fails()) {
-                return response()->json([
-                    'message' => 'Dati non validi alla riga ' . ($count + 1),
-                    'errors'  => $validator->errors(),
-                ], 422);
-            }
-            $validRow = $validator->validated();
-
+        foreach ($rows as $validRow) {
             DB::table('collaborator_hours')->insert([
                 'collaborator_id' => $isAdmin ? $validRow['collaborator_id'] : $user->collaborator_id,
                 'project_id'      => $validRow['project_id'],
@@ -129,17 +102,7 @@ class HoursController extends Controller
         $user    = $request->attributes->get('jwt_user');
         $isAdmin = $user->role === 'admin';
 
-        $rules = [
-            'project_id'   => 'required|integer|exists:projects,id',
-            'tariff_id'    => 'required|integer|exists:tariffs,id',
-            'work_date'    => 'required|date',
-            'hours'        => 'required|numeric|min:0.25|max:24',
-            'description'  => 'nullable|string|max:2000',
-        ];
-        if ($isAdmin) {
-            $rules['collaborator_id'] = 'required|integer|exists:collaborators,id';
-        }
-        $validated = $request->validate($rules);
+        $validated = ApiRequestValidator::validate($request, ApiValidationRules::hoursCollaboratorStore($isAdmin));
 
         if (!$isAdmin) {
             $exists = DB::table('collaborator_hours')
@@ -331,27 +294,31 @@ class HoursController extends Controller
 
     public function storeMy(Request $request)
     {
+        $data = ApiRequestValidator::validate($request, ApiValidationRules::hoursMyStore());
+
         $id = DB::table('my_work_hours')->insertGetId([
-            'client_id'   => $request->input('client_id'),
-            'project_id'  => $request->input('project_id'),
-            'tariff_id'   => $request->input('tariff_id'),
-            'work_date'   => $request->input('work_date'),
-            'hours'       => $request->input('hours'),
-            'description' => $request->input('description', ''),
+            'client_id'   => $data['client_id'],
+            'project_id'  => $data['project_id'] ?? null,
+            'tariff_id'   => $data['tariff_id'],
+            'work_date'   => $data['work_date'],
+            'hours'       => $data['hours'],
+            'description' => $data['description'] ?? '',
         ]);
-        Log::info('Hours: ore personali registrate', ['id' => $id, 'work_date' => $request->input('work_date'), 'hours' => $request->input('hours')]);
+        Log::info('Hours: ore personali registrate', ['id' => $id, 'work_date' => $data['work_date'], 'hours' => $data['hours']]);
         return response()->json(['id' => $id], 201);
     }
 
     public function updateMy(Request $request, int $id)
     {
+        $data = ApiRequestValidator::validate($request, ApiValidationRules::hoursMyStore());
+
         DB::table('my_work_hours')->where('id', $id)->update([
-            'client_id'   => $request->input('client_id'),
-            'project_id'  => $request->input('project_id'),
-            'tariff_id'   => $request->input('tariff_id'),
-            'work_date'   => $request->input('work_date'),
-            'hours'       => $request->input('hours'),
-            'description' => $request->input('description', ''),
+            'client_id'   => $data['client_id'],
+            'project_id'  => $data['project_id'] ?? null,
+            'tariff_id'   => $data['tariff_id'],
+            'work_date'   => $data['work_date'],
+            'hours'       => $data['hours'],
+            'description' => $data['description'] ?? '',
         ]);
         Log::info('Hours: ore personali aggiornate', ['id' => $id]);
         return response()->json(['message' => 'Aggiornato']);
@@ -366,7 +333,8 @@ class HoursController extends Controller
 
     public function bulkStoreMy(Request $request)
     {
-        $rows = $request->input('rows', []);
+        $data = ApiRequestValidator::validate($request, ApiValidationRules::hoursMyBulk());
+        $rows = $data['rows'];
         $count = 0;
         foreach ($rows as $row) {
             DB::table('my_work_hours')->insert([

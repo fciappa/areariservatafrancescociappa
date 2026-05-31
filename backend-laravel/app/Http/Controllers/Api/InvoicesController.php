@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Support\ApiRequestValidator;
+use App\Support\ApiValidationRules;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -11,15 +13,17 @@ class InvoicesController extends Controller
 {
     public function index(Request $request)
     {
+        $filters = ApiRequestValidator::validate($request, ApiValidationRules::invoicesIndexFilters());
+
         $sql    = 'SELECT i.*, c.company_name FROM invoices i JOIN clients c ON c.id = i.client_id';
         $params = [];
 
-        if ($request->filled('year') && $request->filled('month')) {
+        if (!empty($filters['year']) && !empty($filters['month'])) {
             $sql .= ' WHERE YEAR(i.invoice_date) = ? AND MONTH(i.invoice_date) = ?';
-            $params = [$request->query('year'), $request->query('month')];
-        } elseif ($request->filled('year')) {
+            $params = [$filters['year'], $filters['month']];
+        } elseif (!empty($filters['year'])) {
             $sql .= ' WHERE YEAR(i.invoice_date) = ?';
-            $params = [$request->query('year')];
+            $params = [$filters['year']];
         }
 
         $sql .= ' ORDER BY i.invoice_date DESC';
@@ -58,8 +62,9 @@ class InvoicesController extends Controller
 
     public function simulate(Request $request)
     {
-        $items     = $request->input('items', []);
-        $stampDuty = (float) $request->input('stamp_duty', 2);
+        $data      = ApiRequestValidator::validate($request, ApiValidationRules::invoicesSimulate());
+        $items     = $data['items'];
+        $stampDuty = (float) ($data['stamp_duty'] ?? 2);
 
         $subtotal  = 0.0;
         $taxAmount = 0.0;
@@ -98,19 +103,20 @@ class InvoicesController extends Controller
 
     public function store(Request $request)
     {
-        $items     = $request->input('items', []);
+        $data      = ApiRequestValidator::validate($request, ApiValidationRules::invoicesStore());
+        $items     = $data['items'];
         $invoiceId = null;
 
-        DB::transaction(function () use ($request, $items, &$invoiceId) {
+        DB::transaction(function () use ($data, $items, &$invoiceId) {
             $invoiceId = DB::table('invoices')->insertGetId([
-                'invoice_number' => $request->input('invoice_number'),
-                'client_id'      => $request->input('client_id'),
-                'invoice_date'   => $request->input('invoice_date'),
-                'stamp_duty'     => $request->input('stamp_duty', 2),
-                'subtotal'       => $request->input('subtotal'),
-                'tax_amount'     => $request->input('tax_amount'),
-                'total'          => $request->input('total'),
-                'notes'          => $request->input('notes'),
+                'invoice_number' => $data['invoice_number'],
+                'client_id'      => $data['client_id'],
+                'invoice_date'   => $data['invoice_date'],
+                'stamp_duty'     => $data['stamp_duty'] ?? 2,
+                'subtotal'       => $data['subtotal'],
+                'tax_amount'     => $data['tax_amount'],
+                'total'          => $data['total'],
+                'notes'          => $data['notes'] ?? null,
             ]);
 
             $allWorkHourIds = [];
@@ -137,14 +143,16 @@ class InvoicesController extends Controller
             }
         });
 
-        Log::info('Invoices: fattura creata', ['id' => $invoiceId, 'invoice_number' => $request->input('invoice_number'), 'client_id' => $request->input('client_id'), 'total' => $request->input('total')]);
+        Log::info('Invoices: fattura creata', ['id' => $invoiceId, 'invoice_number' => $data['invoice_number'], 'client_id' => $data['client_id'], 'total' => $data['total']]);
         return response()->json(['id' => $invoiceId], 201);
     }
 
     public function updateStatus(Request $request, int $id)
     {
-        DB::table('invoices')->where('id', $id)->update(['status' => $request->input('status')]);
-        Log::info('Invoices: stato aggiornato', ['id' => $id, 'status' => $request->input('status')]);
+        $data = ApiRequestValidator::validate($request, ApiValidationRules::invoicesUpdateStatus());
+
+        DB::table('invoices')->where('id', $id)->update(['status' => $data['status']]);
+        Log::info('Invoices: stato aggiornato', ['id' => $id, 'status' => $data['status']]);
         return response()->json(['message' => 'Stato aggiornato']);
     }
 }

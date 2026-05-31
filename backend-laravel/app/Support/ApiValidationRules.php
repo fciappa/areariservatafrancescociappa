@@ -159,4 +159,152 @@ class ApiValidationRules
             'collaborator_id' => ['nullable', 'integer', 'exists:collaborators,id'],
         ];
     }
+
+    public static function hoursCollaboratorStore(bool $isAdmin): array
+    {
+        return [
+            'project_id'      => ['required', 'integer', 'exists:projects,id'],
+            'tariff_id'       => ['required', 'integer', 'exists:tariffs,id'],
+            'work_date'       => ['required', 'date'],
+            'hours'           => ['required', 'numeric', 'min:0.25', 'max:24'],
+            'description'     => ['nullable', 'string', 'max:2000'],
+            'collaborator_id' => $isAdmin
+                ? ['required', 'integer', 'exists:collaborators,id']
+                : ['nullable', 'integer'],
+        ];
+    }
+
+    public static function hoursCollaboratorBulk(bool $isAdmin): array
+    {
+        return [
+            'rows'                   => ['required', 'array', 'min:1'],
+            'rows.*.project_id'      => ['required', 'integer', 'exists:projects,id'],
+            'rows.*.tariff_id'       => ['required', 'integer', 'exists:tariffs,id'],
+            'rows.*.work_date'       => ['required', 'date'],
+            'rows.*.hours'           => ['required', 'numeric', 'min:0.25', 'max:24'],
+            'rows.*.description'     => ['nullable', 'string', 'max:2000'],
+            'rows.*.collaborator_id' => $isAdmin
+                ? ['required', 'integer', 'exists:collaborators,id']
+                : ['nullable', 'integer'],
+        ];
+    }
+
+    public static function hoursMyStore(): array
+    {
+        return [
+            'client_id'   => ['required', 'integer', 'exists:clients,id'],
+            'project_id'  => ['nullable', 'integer', 'exists:projects,id'],
+            'tariff_id'   => ['required', 'integer', 'exists:tariffs,id'],
+            'work_date'   => ['required', 'date'],
+            'hours'       => ['required', 'numeric', 'min:0.25', 'max:24'],
+            'description' => ['nullable', 'string', 'max:2000'],
+        ];
+    }
+
+    public static function hoursMyBulk(): array
+    {
+        return [
+            'rows'                 => ['required', 'array', 'min:1'],
+            'rows.*.client_id'     => ['required', 'integer', 'exists:clients,id'],
+            'rows.*.project_id'    => ['nullable', 'integer', 'exists:projects,id'],
+            'rows.*.tariff_id'     => ['required', 'integer', 'exists:tariffs,id'],
+            'rows.*.work_date'     => ['required', 'date'],
+            'rows.*.hours'         => ['required', 'numeric', 'min:0.25', 'max:24'],
+            'rows.*.description'   => ['nullable', 'string', 'max:2000'],
+        ];
+    }
+
+    public static function invoicesIndexFilters(): array
+    {
+        return [
+            'year'  => ['nullable', 'integer', 'min:2000', 'required_with:month'],
+            'month' => ['nullable', 'integer', 'between:1,12'],
+        ];
+    }
+
+    public static function invoicesSimulate(): array
+    {
+        return [
+            'items'                    => ['required', 'array', 'min:1'],
+            'items.*.hourly_rate'      => ['required', 'numeric', 'min:0'],
+            'items.*.hours'            => ['required', 'numeric', 'min:0.01'],
+            'items.*.tax_inclusive'    => ['nullable', 'boolean'],
+            'stamp_duty'               => ['nullable', 'numeric', 'min:0'],
+        ];
+    }
+
+    public static function invoicesStore(): array
+    {
+        return [
+            'invoice_number'             => ['required', 'string', 'max:100'],
+            'client_id'                  => ['required', 'integer', 'exists:clients,id'],
+            'invoice_date'               => ['required', 'date'],
+            'stamp_duty'                 => ['nullable', 'numeric', 'min:0'],
+            'subtotal'                   => ['required', 'numeric', 'min:0'],
+            'tax_amount'                 => ['required', 'numeric', 'min:0'],
+            'total'                      => ['required', 'numeric', 'min:0'],
+            'notes'                      => ['nullable', 'string'],
+            'items'                      => ['required', 'array', 'min:1'],
+            'items.*.description'        => ['nullable', 'string', 'max:2000'],
+            'items.*.tariff_id'          => ['required', 'integer', 'exists:tariffs,id'],
+            'items.*.hours'              => ['required', 'numeric', 'min:0.01'],
+            'items.*.hourly_rate'        => ['required', 'numeric', 'min:0'],
+            'items.*.tax_inclusive'      => ['nullable', 'boolean'],
+            'items.*.line_total'         => ['required', 'numeric', 'min:0'],
+            'items.*.work_hour_ids'      => ['nullable', 'array'],
+            'items.*.work_hour_ids.*'    => ['integer', 'exists:my_work_hours,id'],
+        ];
+    }
+
+    public static function invoicesUpdateStatus(): array
+    {
+        return [
+            'status' => ['required', Rule::in(['draft', 'sent', 'paid', 'cancelled'])],
+        ];
+    }
+
+    public static function collabInvoicesIndexFilters(): array
+    {
+        return [
+            'year'            => ['nullable', 'integer', 'min:2000', 'required_with:month'],
+            'month'           => ['nullable', 'integer', 'between:1,12'],
+            'collaborator_id' => ['nullable', 'integer', 'exists:collaborators,id'],
+        ];
+    }
+
+    public static function collabInvoicesStore(): array
+    {
+        return [
+            'collaborator_id'            => ['required', 'integer', 'exists:collaborators,id'],
+            'invoice_number'             => ['required', 'string', 'max:100'],
+            'invoice_date'               => ['required', 'date'],
+            'subtotal'                   => ['required', 'numeric', 'min:0'],
+            'tax_amount'                 => ['required', 'numeric', 'min:0'],
+            'total'                      => ['required', 'numeric', 'min:0'],
+            'notes'                      => ['nullable', 'string'],
+            'items'                      => ['required', 'array', 'min:1'],
+            'items.*.description'        => ['nullable', 'string', 'max:2000'],
+            'items.*.tariff_id'          => ['required', 'integer', 'exists:tariffs,id'],
+            'items.*.hours'              => ['required', 'numeric', 'min:0.01'],
+            'items.*.hourly_rate'        => ['required', 'numeric', 'min:0'],
+            'items.*.tax_inclusive'      => ['nullable', 'boolean'],
+            'items.*.line_total'         => ['required', 'numeric', 'min:0'],
+            'items.*.collab_hour_ids'    => ['nullable', 'array'],
+            'items.*.collab_hour_ids.*'  => ['integer', 'exists:collaborator_hours,id'],
+        ];
+    }
+
+    public static function collabInvoicesUpdateStatus(): array
+    {
+        return [
+            'status' => ['required', Rule::in(['draft', 'sent', 'paid', 'cancelled'])],
+        ];
+    }
+
+    public static function collabInvoicesMarkPaid(): array
+    {
+        return [
+            'paid_at' => ['nullable', 'date'],
+        ];
+    }
 }

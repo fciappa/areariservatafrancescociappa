@@ -80,4 +80,66 @@ class ApiEndpointValidationCoverageTest extends TestCase
                 'errors' => ['project_id'],
             ]);
     }
+
+    public function test_hours_store_my_requires_required_fields(): void
+    {
+        $response = $this
+            ->withoutMiddleware()
+            ->postJson('/api/hours/my', []);
+
+        $response->assertStatus(422)
+            ->assertJson([
+                'message' => 'Dati non validi',
+            ])
+            ->assertJsonStructure([
+                'errors' => ['client_id', 'tariff_id', 'work_date', 'hours'],
+            ]);
+    }
+
+    public function test_invoices_simulate_requires_items_array(): void
+    {
+        $response = $this
+            ->withoutMiddleware()
+            ->postJson('/api/invoices/simulate', []);
+
+        $response->assertStatus(422)
+            ->assertJson([
+                'message' => 'Dati non validi',
+            ])
+            ->assertJsonStructure([
+                'errors' => ['items'],
+            ]);
+    }
+
+    public function test_invoices_update_status_validates_enum(): void
+    {
+        $response = $this
+            ->withoutMiddleware()
+            ->putJson('/api/invoices/1/status', [
+                'status' => 'unknown-status',
+            ]);
+
+        $response->assertStatus(422)
+            ->assertJson([
+                'message' => 'Dati non validi',
+            ])
+            ->assertJsonStructure([
+                'errors' => ['status'],
+            ]);
+    }
+
+    public function test_collab_invoices_store_requires_mandatory_fields(): void
+    {
+        $response = $this
+            ->withoutMiddleware()
+            ->postJson('/api/collab-invoices', []);
+
+        $response->assertStatus(422)
+            ->assertJson([
+                'message' => 'Dati non validi',
+            ])
+            ->assertJsonStructure([
+                'errors' => ['collaborator_id', 'invoice_number', 'invoice_date', 'subtotal', 'tax_amount', 'total', 'items'],
+            ]);
+    }
 }
