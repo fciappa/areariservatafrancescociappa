@@ -1,0 +1,91 @@
+name: Nightly Smoke Staging
+
+on:
+  schedule:
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: "Override staging base URL (optional)"
+        required: false
+        type: string
+      skip_auth:
+        description: "Skip auth checks"
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  smoke-staging:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend-laravel
+
+    env:
+      STAGING_BASE_URL: ${{ secrets.STAGING_BASE_URL }}
+      SMOKE_USER: ${{ secrets.SMOKE_USER }}
+      SMOKE_PASS: ${{ secrets.SMOKE_PASS }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Resolve target base URL
+        id: target
+        shell: bash
+        run: |
+          if [ -n "${{ github.event.inputs.base_url }}" ]; then
+            echo "base_url=${{ github.event.inputs.base_url }}" >> "$GITHUB_OUTPUT"
+          elif [ -n "$STAGING_BASE_URL" ]; then
+            echo "base_url=$STAGING_BASE_URL" >> "$GITHUB_OUTPUT"
+          else
+            echo "STAGING_BASE_URL secret not configured and no manual base_url input provided."
+            exit 1
+          fi
+
+      - name: Build report path
+        id: report
+        shell: bash
+        run: |
+          ts="$(date -u +'%Y%m%d-%H%M%S')"
+          echo "report_path=storage/logs/nightly-smoke-${ts}.md" >> "$GITHUB_OUTPUT"
+
+      - name: Run nightly smoke on staging
+        shell: pwsh
+        run: |
+          $skipAuth = "${{ github.event.inputs.skip_auth }}"
+          $params = @{
+            BaseUrl = "${{ steps.target.outputs.base_url }}"
+            ReportPath = "${{ steps.report.outputs.report_path }}"
+          }
+
+          if ($skipAuth -eq "true") {
+            $params.SkipAuthChecks = $true
+          }
+
+          pwsh -File scripts/smoke-api.ps1 @params
+
+      - name: Upload nightly smoke markdown artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-smoke-report-${{ github.run_id }}
+          path: backend-laravel/${{ steps.report.outputs.report_path }}
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Append run summary
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "## Nightly Smoke Staging"
+            echo ""
+            echo "- Base URL: ${{ steps.target.outputs.base_url }}"
+            echo "- Report artifact: nightly-smoke-report-${{ github.run_id }}"
+            echo "- Report path: backend-laravel/${{ steps.report.outputs.report_path }}"
+          } >> "$GITHUB_STEP_SUMMARY"
