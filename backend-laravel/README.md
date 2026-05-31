@@ -9,6 +9,11 @@ Backend PHP/Laravel che sostituisce il precedente backend Node.js/Express per la
 - Validazione API centralizzata: `docs/api-validation.md`
 - Smoke test release API: `docs/smoke-release.md`
 
+## CI
+
+- Workflow GitHub Actions: `.github/workflows/backend-ci.yml`
+- Esegue i test backend (`phpunit`) ad ogni push e pull request
+
 ### Requisiti
 - PHP 8.1+
 - Composer
