@@ -2,6 +2,7 @@ param(
     [string]$BaseUrl = "http://127.0.0.1:8000",
     [switch]$SkipAuthChecks,
     [string]$ProtectedPath = "/api/users",
+    [string]$ReportPath = "smoke-report.md",
     [switch]$VerboseOutput
 )
 
@@ -67,6 +68,54 @@ function Invoke-Api {
             Error      = $_
         }
     }
+}
+
+function Write-MarkdownReport {
+    param(
+        [string]$Path,
+        [string]$TargetBaseUrl,
+        [string]$TargetProtectedPath,
+        [bool]$AuthSkipped,
+        [array]$CheckRows,
+        [int]$FailedChecks
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Path)) {
+        return
+    }
+
+    $directory = Split-Path -Parent $Path
+    if (-not [string]::IsNullOrWhiteSpace($directory) -and -not (Test-Path $directory)) {
+        New-Item -ItemType Directory -Path $directory -Force | Out-Null
+    }
+
+    $generatedAt = (Get-Date).ToString("yyyy-MM-dd HH:mm:ss K")
+    $overall = if ($FailedChecks -eq 0) { "OK" } else { "FAILED" }
+    $passed = ($CheckRows | Where-Object { $_.Passed }).Count
+    $total = $CheckRows.Count
+
+    $lines = @()
+    $lines += "# Smoke API Report"
+    $lines += ""
+    $lines += "- Generated at: $generatedAt"
+    $lines += "- Base URL: $TargetBaseUrl"
+    $lines += "- Protected path: $TargetProtectedPath"
+    $lines += "- Auth checks skipped: $AuthSkipped"
+    $lines += "- Result: $overall"
+    $lines += "- Passed: $passed/$total"
+    $lines += ""
+    $lines += "| Check | Status | Detail |"
+    $lines += "|---|---|---|"
+
+    foreach ($row in $CheckRows) {
+        $status = if ($row.Passed) { "PASS" } else { "FAIL" }
+        $detail = ([string]$row.Detail).Replace("|", "\\|")
+        $name = ([string]$row.Name).Replace("|", "\\|")
+        $lines += "| $name | $status | $detail |"
+    }
+
+    Set-Content -Path $Path -Value $lines -Encoding UTF8
+    Write-Output "Smoke API report written: $Path"
 }
 
 $checks = @()
@@ -156,6 +205,8 @@ foreach ($c in $checks) {
 }
 
 $failed = ($checks | Where-Object { -not $_.Passed }).Count
+Write-MarkdownReport -Path $ReportPath -TargetBaseUrl $BaseUrl -TargetProtectedPath $ProtectedPath -AuthSkipped ([bool]$SkipAuthChecks) -CheckRows $checks -FailedChecks $failed
+
 if ($failed -gt 0) {
     Write-Output "Smoke API result: FAILED ($failed checks failed)"
     exit 1

@@ -5,6 +5,7 @@ Script rapido per verificare dopo deploy:
 - envelope 404 standard
 - envelope 422 standard
 - flusso auth completo opzionale: login, refresh, route protetta, logout, invalidazione refresh token
+- report Markdown automatico riusabile in release note
 
 ## Script
 
@@ -38,7 +39,22 @@ pwsh -File scripts/smoke-api.ps1 -BaseUrl "https://tuo-dominio" -ProtectedPath "
 
 - `-SkipAuthChecks` per saltare completamente i controlli login/protected
 - `-ProtectedPath` per impostare la route protetta da verificare nel flusso auth
+- `-ReportPath` percorso file report Markdown (default: `smoke-report.md`)
 - `-VerboseOutput` per output diagnostico aggiuntivo in caso di failure
+
+## Report Markdown
+
+Esempio con percorso dedicato:
+
+```powershell
+pwsh -File scripts/smoke-api.ps1 -BaseUrl "https://tuo-dominio" -ReportPath "storage/logs/smoke-report.md"
+```
+
+Il report contiene:
+
+- metadati esecuzione (timestamp, base URL, path protetta)
+- esito complessivo
+- tabella check `PASS/FAIL` con dettagli
 
 ## Exit code
 
