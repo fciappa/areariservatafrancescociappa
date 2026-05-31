@@ -1,4 +1,5 @@
 /vendor/
+.phpunit.result.cache
 .env
 .env.development
 .env.production
