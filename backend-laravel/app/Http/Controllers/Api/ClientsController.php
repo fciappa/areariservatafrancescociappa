@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Support\ApiRequestValidator;
+use App\Support\ApiValidationRules;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -26,34 +28,38 @@ class ClientsController extends Controller
 
     public function store(Request $request)
     {
+        $data = ApiRequestValidator::validate($request, ApiValidationRules::clientStore());
+
         $id = DB::table('clients')->insertGetId([
-            'company_name' => $request->input('company_name'),
-            'vat_number'   => $request->input('vat_number'),
-            'email'        => $request->input('email'),
-            'phone'        => $request->input('phone'),
-            'address'      => $request->input('address'),
-            'city'         => $request->input('city'),
-            'postal_code'  => $request->input('postal_code'),
-            'country'      => $request->input('country', 'Italia'),
-            'notes'        => $request->input('notes'),
+            'company_name' => $data['company_name'],
+            'vat_number'   => $data['vat_number'],
+            'email'        => $data['email'] ?? null,
+            'phone'        => $data['phone'] ?? null,
+            'address'      => $data['address'] ?? null,
+            'city'         => $data['city'] ?? null,
+            'postal_code'  => $data['postal_code'] ?? null,
+            'country'      => $data['country'] ?? 'Italia',
+            'notes'        => $data['notes'] ?? null,
         ]);
-        Log::info('Clients: creato', ['id' => $id, 'company' => $request->input('company_name')]);
+        Log::info('Clients: creato', ['id' => $id, 'company' => $data['company_name']]);
         return response()->json(['id' => $id], 201);
     }
 
     public function update(Request $request, int $id)
     {
+        $data = ApiRequestValidator::validate($request, ApiValidationRules::clientUpdate($id));
+
         DB::table('clients')->where('id', $id)->update([
-            'company_name' => $request->input('company_name'),
-            'vat_number'   => $request->input('vat_number'),
-            'email'        => $request->input('email'),
-            'phone'        => $request->input('phone'),
-            'address'      => $request->input('address'),
-            'city'         => $request->input('city'),
-            'postal_code'  => $request->input('postal_code'),
-            'country'      => $request->input('country', 'Italia'),
-            'notes'        => $request->input('notes'),
-            'is_active'    => $request->input('is_active', 1),
+            'company_name' => $data['company_name'],
+            'vat_number'   => $data['vat_number'],
+            'email'        => $data['email'] ?? null,
+            'phone'        => $data['phone'] ?? null,
+            'address'      => $data['address'] ?? null,
+            'city'         => $data['city'] ?? null,
+            'postal_code'  => $data['postal_code'] ?? null,
+            'country'      => $data['country'] ?? 'Italia',
+            'notes'        => $data['notes'] ?? null,
+            'is_active'    => $data['is_active'] ?? 1,
         ]);
         Log::info('Clients: aggiornato', ['id' => $id]);
         return response()->json(['message' => 'Aggiornato']);

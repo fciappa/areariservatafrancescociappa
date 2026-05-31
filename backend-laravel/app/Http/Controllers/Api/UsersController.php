@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Support\ApiRequestValidator;
+use App\Support\ApiValidationRules;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -24,15 +26,25 @@ class UsersController extends Controller
 
     public function store(Request $request)
     {
+        $data = ApiRequestValidator::validate($request, ApiValidationRules::userStore());
+
+        if ($data['role'] !== 'collaborator' && !empty($data['collaborator_id'])) {
+            return response()->json(['message' => 'collaborator_id ammesso solo per ruolo collaborator'], 422);
+        }
+
+        if ($data['role'] !== 'referent' && !empty($data['referent_id'])) {
+            return response()->json(['message' => 'referent_id ammesso solo per ruolo referent'], 422);
+        }
+
         $id = DB::table('users')->insertGetId([
-            'username'        => $request->input('username'),
-            'email'           => $request->input('email'),
-            'password_hash'   => Hash::make($request->input('password')),
-            'role'            => $request->input('role', 'collaborator'),
-            'collaborator_id' => $request->input('collaborator_id'),
-            'referent_id'     => $request->input('referent_id'),
+            'username'        => $data['username'],
+            'email'           => $data['email'],
+            'password_hash'   => Hash::make($data['password']),
+            'role'            => $data['role'],
+            'collaborator_id' => $data['role'] === 'collaborator' ? ($data['collaborator_id'] ?? null) : null,
+            'referent_id'     => $data['role'] === 'referent' ? ($data['referent_id'] ?? null) : null,
         ]);
-        Log::info('Users: creato', ['user_id' => $id, 'username' => $request->input('username'), 'role' => $request->input('role', 'collaborator')]);
+        Log::info('Users: creato', ['user_id' => $id, 'username' => $data['username'], 'role' => $data['role']]);
         return response()->json(['id' => $id], 201);
     }
 

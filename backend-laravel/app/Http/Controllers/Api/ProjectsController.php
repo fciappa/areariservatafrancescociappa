@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Support\ApiRequestValidator;
+use App\Support\ApiValidationRules;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -90,21 +92,18 @@ class ProjectsController extends Controller
 
     public function store(Request $request)
     {
-        if (!$request->filled('client_id') || !$request->filled('name') || !$request->filled('start_date')) {
-            Log::warning('Projects: store - dati obbligatori mancanti', ['input' => $request->only('client_id', 'name', 'start_date')]);
-            return response()->json(['message' => 'client_id, name e start_date sono obbligatori'], 400);
-        }
+        $data = ApiRequestValidator::validate($request, ApiValidationRules::projectStore());
 
         $id = DB::table('projects')->insertGetId([
-            'client_id'   => $request->input('client_id'),
-            'name'        => $request->input('name'),
-            'description' => $request->input('description'),
-            'status'      => $request->input('status', 'active'),
-            'start_date'  => $request->input('start_date'),
-            'end_date'    => $request->input('end_date'),
-            'notes'       => $request->input('notes'),
+            'client_id'   => $data['client_id'],
+            'name'        => $data['name'],
+            'description' => $data['description'] ?? null,
+            'status'      => $data['status'] ?? 'active',
+            'start_date'  => $data['start_date'],
+            'end_date'    => $data['end_date'] ?? null,
+            'notes'       => $data['notes'] ?? null,
         ]);
-        Log::info('Projects: creato', ['id' => $id, 'name' => $request->input('name'), 'client_id' => $request->input('client_id')]);
+        Log::info('Projects: creato', ['id' => $id, 'name' => $data['name'], 'client_id' => $data['client_id']]);
 
         $rows = DB::select(
             'SELECT p.*, c.company_name FROM projects p JOIN clients c ON c.id = p.client_id WHERE p.id = ?',
@@ -115,15 +114,17 @@ class ProjectsController extends Controller
 
     public function update(Request $request, int $id)
     {
+        $data = ApiRequestValidator::validate($request, ApiValidationRules::projectUpdate());
+
         DB::table('projects')->where('id', $id)->update([
-            'client_id'   => $request->input('client_id'),
-            'name'        => $request->input('name'),
-            'description' => $request->input('description'),
-            'status'      => $request->input('status', 'active'),
-            'start_date'  => $request->input('start_date'),
-            'end_date'    => $request->input('end_date'),
-            'notes'       => $request->input('notes'),
-            'is_active'   => $request->input('is_active', true) !== false ? 1 : 0,
+            'client_id'   => $data['client_id'],
+            'name'        => $data['name'],
+            'description' => $data['description'] ?? null,
+            'status'      => $data['status'] ?? 'active',
+            'start_date'  => $data['start_date'],
+            'end_date'    => $data['end_date'] ?? null,
+            'notes'       => $data['notes'] ?? null,
+            'is_active'   => ($data['is_active'] ?? true) !== false ? 1 : 0,
         ]);
         Log::info('Projects: aggiornato', ['id' => $id]);
 
@@ -136,18 +137,18 @@ class ProjectsController extends Controller
 
     public function addAssignment(Request $request, int $id)
     {
-        if (!$request->filled('tariff_id')) {
-            Log::warning('Projects: addAssignment - tariff_id mancante', ['project_id' => $id]);
-            return response()->json(['message' => 'tariff_id obbligatorio'], 400);
-        }
+        $data = ApiRequestValidator::validate($request, [
+            'tariff_id'       => ['required', 'integer', 'exists:tariffs,id'],
+            'collaborator_id' => ['nullable', 'integer', 'exists:collaborators,id'],
+        ]);
 
         try {
             $assignId = DB::table('tariff_assignments')->insertGetId([
-                'tariff_id'       => $request->input('tariff_id'),
+                'tariff_id'       => $data['tariff_id'],
                 'project_id'      => $id,
-                'collaborator_id' => $request->input('collaborator_id'),
+                'collaborator_id' => $data['collaborator_id'] ?? null,
             ]);
-            Log::info('Projects: assegnazione aggiunta', ['project_id' => $id, 'assign_id' => $assignId, 'tariff_id' => $request->input('tariff_id')]);
+            Log::info('Projects: assegnazione aggiunta', ['project_id' => $id, 'assign_id' => $assignId, 'tariff_id' => $data['tariff_id']]);
 
             $rows = DB::select('
                 SELECT ta.*, t.name AS tariff_name, t.hourly_rate, t.tax_inclusive,
@@ -179,11 +180,11 @@ class ProjectsController extends Controller
 
     public function addReferent(Request $request, int $id)
     {
-        if (!$request->filled('user_id')) {
-            return response()->json(['message' => 'user_id obbligatorio'], 400);
-        }
+        $data = ApiRequestValidator::validate($request, [
+            'user_id' => ['required', 'integer', 'exists:users,id'],
+        ]);
 
-        $userRows = DB::select('SELECT id, role, is_active FROM users WHERE id = ? LIMIT 1', [$request->input('user_id')]);
+        $userRows = DB::select('SELECT id, role, is_active FROM users WHERE id = ? LIMIT 1', [$data['user_id']]);
         $target = $userRows[0] ?? null;
         if (!$target || $target->role !== 'referent' || !$target->is_active) {
             return response()->json(['message' => 'Utente referente non valido'], 422);
@@ -192,9 +193,9 @@ class ProjectsController extends Controller
         try {
             $refId = DB::table('project_referents')->insertGetId([
                 'project_id' => $id,
-                'user_id'    => $request->input('user_id'),
+                'user_id'    => $data['user_id'],
             ]);
-            Log::info('Projects: referente assegnato', ['project_id' => $id, 'project_referent_id' => $refId, 'user_id' => $request->input('user_id')]);
+            Log::info('Projects: referente assegnato', ['project_id' => $id, 'project_referent_id' => $refId, 'user_id' => $data['user_id']]);
 
             $rows = DB::select('
                 SELECT pr.id, pr.user_id, u.username, u.email

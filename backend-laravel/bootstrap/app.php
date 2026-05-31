@@ -23,6 +23,13 @@ $app = Application::configure(basePath: dirname(__DIR__))
     ->withExceptions(function (Exceptions $exceptions) {
         $exceptions->render(function (\Throwable $e, $request) {
             if ($request->is('api/*')) {
+                if ($e instanceof \Illuminate\Validation\ValidationException) {
+                    return response()->json([
+                        'message' => 'Dati non validi',
+                        'errors'  => $e->errors(),
+                    ], 422);
+                }
+
                 $code = method_exists($e, 'getStatusCode') ? $e->getStatusCode() : 500;
                 return response()->json(['message' => $e->getMessage()], $code);
             }

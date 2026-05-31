@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Support\ApiRequestValidator;
+use App\Support\ApiValidationRules;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -26,13 +28,15 @@ class ReferentsController extends Controller
 
     public function store(Request $request)
     {
+        $data = ApiRequestValidator::validate($request, ApiValidationRules::referentStore());
+
         $id = DB::table('referents')->insertGetId([
-            'first_name'  => $request->input('first_name'),
-            'last_name'   => $request->input('last_name'),
-            'email'       => $request->input('email'),
-            'phone'       => $request->input('phone'),
-            'fiscal_code' => $request->input('fiscal_code'),
-            'notes'       => $request->input('notes'),
+            'first_name'  => $data['first_name'],
+            'last_name'   => $data['last_name'],
+            'email'       => $data['email'],
+            'phone'       => $data['phone'] ?? null,
+            'fiscal_code' => $data['fiscal_code'] ?? null,
+            'notes'       => $data['notes'] ?? null,
         ]);
 
         Log::info('Referents: creato', ['id' => $id]);
@@ -41,14 +45,16 @@ class ReferentsController extends Controller
 
     public function update(Request $request, int $id)
     {
+        $data = ApiRequestValidator::validate($request, ApiValidationRules::referentUpdate($id));
+
         DB::table('referents')->where('id', $id)->update([
-            'first_name'  => $request->input('first_name'),
-            'last_name'   => $request->input('last_name'),
-            'email'       => $request->input('email'),
-            'phone'       => $request->input('phone'),
-            'fiscal_code' => $request->input('fiscal_code'),
-            'notes'       => $request->input('notes'),
-            'is_active'   => $request->input('is_active', 1),
+            'first_name'  => $data['first_name'],
+            'last_name'   => $data['last_name'],
+            'email'       => $data['email'],
+            'phone'       => $data['phone'] ?? null,
+            'fiscal_code' => $data['fiscal_code'] ?? null,
+            'notes'       => $data['notes'] ?? null,
+            'is_active'   => $data['is_active'] ?? 1,
         ]);
 
         Log::info('Referents: aggiornato', ['id' => $id]);

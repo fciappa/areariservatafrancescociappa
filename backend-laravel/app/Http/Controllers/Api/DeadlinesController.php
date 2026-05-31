@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Support\ApiRequestValidator;
+use App\Support\ApiValidationRules;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -63,20 +65,10 @@ class DeadlinesController extends Controller
 
     public function store(Request $request)
     {
-        if (!$request->filled('client_id') || !$request->filled('due_date') || !$request->filled('item_type') || !$request->filled('description')) {
-            return response()->json([
-                'message' => 'client_id, due_date, item_type e description sono obbligatori',
-            ], 400);
-        }
+        $data = ApiRequestValidator::validate($request, ApiValidationRules::deadlineStore());
+        $clientId = (int) $data['client_id'];
 
-        $clientId = (int) $request->input('client_id');
-        $exists = DB::select('SELECT id FROM clients WHERE id = ? LIMIT 1', [$clientId]);
-
-        if (empty($exists)) {
-            return response()->json(['message' => 'Cliente non trovato'], 404);
-        }
-
-        $projectId = $request->input('project_id');
+        $projectId = $data['project_id'] ?? null;
         if ($projectId) {
             $projectRows = DB::select('SELECT id FROM projects WHERE id = ? AND client_id = ? LIMIT 1', [$projectId, $clientId]);
             if (empty($projectRows)) {
@@ -87,19 +79,19 @@ class DeadlinesController extends Controller
         $id = DB::table('client_deadlines')->insertGetId([
             'client_id'      => $clientId,
             'project_id'     => $projectId ?: null,
-            'due_date'       => $request->input('due_date'),
-            'item_type'      => $request->input('item_type'),
-            'description'    => $request->input('description'),
-            'linked_to'      => $request->input('linked_to'),
-            'avada_version'  => $request->input('avada_version'),
-            'php_version'    => $request->input('php_version'),
-            'mysql_version'  => $request->input('mysql_version'),
-            'wp_version'     => $request->input('wp_version'),
-            'test_email'     => $request->input('test_email'),
-            'line_ref'       => $request->input('line_ref'),
-            'notes'          => $request->input('notes'),
-            'amount'         => $request->filled('amount') ? $request->input('amount') : null,
-            'is_active'      => $request->input('is_active', 1),
+            'due_date'       => $data['due_date'],
+            'item_type'      => $data['item_type'],
+            'description'    => $data['description'],
+            'linked_to'      => $data['linked_to'] ?? null,
+            'avada_version'  => $data['avada_version'] ?? null,
+            'php_version'    => $data['php_version'] ?? null,
+            'mysql_version'  => $data['mysql_version'] ?? null,
+            'wp_version'     => $data['wp_version'] ?? null,
+            'test_email'     => $data['test_email'] ?? null,
+            'line_ref'       => $data['line_ref'] ?? null,
+            'notes'          => $data['notes'] ?? null,
+            'amount'         => $data['amount'] ?? null,
+            'is_active'      => $data['is_active'] ?? 1,
         ]);
 
         Log::info('Deadlines: creata', ['id' => $id, 'client_id' => $clientId]);
@@ -122,21 +114,10 @@ class DeadlinesController extends Controller
         if (empty($rows)) {
             return response()->json(['message' => 'Scadenza non trovata'], 404);
         }
+        $data = ApiRequestValidator::validate($request, ApiValidationRules::deadlineUpdate());
+        $clientId = (int) $data['client_id'];
 
-        if (!$request->filled('client_id') || !$request->filled('due_date') || !$request->filled('item_type') || !$request->filled('description')) {
-            return response()->json([
-                'message' => 'client_id, due_date, item_type e description sono obbligatori',
-            ], 400);
-        }
-
-        $clientId = (int) $request->input('client_id');
-        $exists = DB::select('SELECT id FROM clients WHERE id = ? LIMIT 1', [$clientId]);
-
-        if (empty($exists)) {
-            return response()->json(['message' => 'Cliente non trovato'], 404);
-        }
-
-        $projectId = $request->input('project_id');
+        $projectId = $data['project_id'] ?? null;
         if ($projectId) {
             $projectRows = DB::select('SELECT id FROM projects WHERE id = ? AND client_id = ? LIMIT 1', [$projectId, $clientId]);
             if (empty($projectRows)) {
@@ -147,19 +128,19 @@ class DeadlinesController extends Controller
         DB::table('client_deadlines')->where('id', $id)->update([
             'client_id'      => $clientId,
             'project_id'     => $projectId ?: null,
-            'due_date'       => $request->input('due_date'),
-            'item_type'      => $request->input('item_type'),
-            'description'    => $request->input('description'),
-            'linked_to'      => $request->input('linked_to'),
-            'avada_version'  => $request->input('avada_version'),
-            'php_version'    => $request->input('php_version'),
-            'mysql_version'  => $request->input('mysql_version'),
-            'wp_version'     => $request->input('wp_version'),
-            'test_email'     => $request->input('test_email'),
-            'line_ref'       => $request->input('line_ref'),
-            'notes'          => $request->input('notes'),
-            'amount'         => $request->filled('amount') ? $request->input('amount') : null,
-            'is_active'      => $request->input('is_active', 1),
+            'due_date'       => $data['due_date'],
+            'item_type'      => $data['item_type'],
+            'description'    => $data['description'],
+            'linked_to'      => $data['linked_to'] ?? null,
+            'avada_version'  => $data['avada_version'] ?? null,
+            'php_version'    => $data['php_version'] ?? null,
+            'mysql_version'  => $data['mysql_version'] ?? null,
+            'wp_version'     => $data['wp_version'] ?? null,
+            'test_email'     => $data['test_email'] ?? null,
+            'line_ref'       => $data['line_ref'] ?? null,
+            'notes'          => $data['notes'] ?? null,
+            'amount'         => $data['amount'] ?? null,
+            'is_active'      => $data['is_active'] ?? 1,
         ]);
 
         Log::info('Deadlines: aggiornata', ['id' => $id, 'client_id' => $clientId]);
