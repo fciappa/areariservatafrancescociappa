@@ -51,6 +51,7 @@
             <th><button class="th-sort" @click="toggleSort('test_email')">Test email <span class="sort-indicator">{{ sortIndicator('test_email') }}</span></button></th>
             <th><button class="th-sort" @click="toggleSort('notes')">Note <span class="sort-indicator">{{ sortIndicator('notes') }}</span></button></th>
             <th><button class="th-sort" @click="toggleSort('amount')">Importo <span class="sort-indicator">{{ sortIndicator('amount') }}</span></button></th>
+            <th>Azioni</th>
           </tr>
         </thead>
         <tbody>
@@ -67,16 +68,20 @@
             <td>{{ d.test_email || '—' }}</td>
             <td class="notes">{{ d.notes || '—' }}</td>
             <td class="mono amount">{{ d.amount != null ? formatAmount(d.amount) : '—' }}</td>
+            <td class="actions">
+              <button class="btn-icon" title="Rinnova data +1 anno" @click="renewDate(d)">🔁</button>
+              <button class="btn-icon" title="Modifica scadenza" @click="openEdit(d)">✏️</button>
+            </td>
           </tr>
         </tbody>
       </table>
     </div>
 
     <Teleport to="body">
-      <div v-if="modal.open" class="modal-overlay" @click.self="closeModal">
+      <div v-if="modalState.open" class="modal-overlay" @click.self="closeModal">
         <div class="modal">
           <div class="modal-header">
-            <h3>Nuova scadenza</h3>
+            <h3>{{ modalState.isNew ? 'Nuova scadenza' : 'Modifica scadenza' }}</h3>
             <button class="modal-close" @click="closeModal">✕</button>
           </div>
 
@@ -203,7 +208,7 @@ const selectedClientId = ref('');
 const sortKey = ref(sortPreference.key);
 const sortDirection = ref(sortPreference.direction);
 
-const modal = reactive({ open: false });
+const modalState = reactive({ open: false, isNew: true, id: null });
 
 const form = reactive(emptyForm());
 const formErrors = reactive({
@@ -320,18 +325,43 @@ function resetForm() {
 }
 
 function closeModal() {
-  modal.open = false;
+  modalState.open = false;
 }
 
 function openNew() {
   resetForm();
+  modalState.isNew = true;
+  modalState.id = null;
 
   const enpabil = clients.value.find((c) => c.company_name?.toLowerCase() === 'enpabil');
   if (enpabil) {
     form.client_id = String(enpabil.id);
   }
 
-  modal.open = true;
+  modalState.open = true;
+}
+
+function openEdit(deadline) {
+  resetForm();
+  modalState.isNew = false;
+  modalState.id = deadline.id;
+
+  Object.assign(form, {
+    client_id: String(deadline.client_id ?? ''),
+    due_date: deadline.due_date?.slice(0, 10) ?? today(),
+    item_type: deadline.item_type ?? '',
+    description: deadline.description ?? '',
+    linked_to: deadline.linked_to ?? '',
+    avada_version: deadline.avada_version ?? '',
+    php_version: deadline.php_version ?? '',
+    mysql_version: deadline.mysql_version ?? '',
+    wp_version: deadline.wp_version ?? '',
+    test_email: deadline.test_email ?? '',
+    notes: deadline.notes ?? '',
+    amount: deadline.amount ?? '',
+  });
+
+  modalState.open = true;
 }
 
 function validate() {
@@ -370,16 +400,38 @@ async function save() {
   saveError.value = '';
 
   try {
-    await api.post('/deadlines', {
+    const payload = {
       ...form,
       client_id: Number(form.client_id),
       amount: form.amount === '' ? null : Number(form.amount),
-    });
+    };
+
+    if (modalState.isNew) {
+      await api.post('/deadlines', payload);
+    } else {
+      await api.put(`/deadlines/${modalState.id}`, payload);
+    }
 
     await load();
     closeModal();
   } catch (err) {
     saveError.value = err.response?.data?.message ?? 'Errore durante il salvataggio.';
+  } finally {
+    saving.value = false;
+  }
+}
+
+async function renewDate(deadline) {
+  if (!confirm(`Rinnovare la scadenza di ${deadline.description} portandola a +1 anno?`)) return;
+
+  saving.value = true;
+  saveError.value = '';
+
+  try {
+    await api.put(`/deadlines/${deadline.id}/renew`);
+    await load();
+  } catch (err) {
+    saveError.value = err.response?.data?.message ?? 'Errore durante il rinnovo della data.';
   } finally {
     saving.value = false;
   }
@@ -469,6 +521,13 @@ onMounted(load);
 
 .amount {
   white-space: nowrap;
+}
+
+.actions {
+  white-space: nowrap;
+  display: flex;
+  gap: 0.25rem;
+  align-items: center;
 }
 
 .triple-row {

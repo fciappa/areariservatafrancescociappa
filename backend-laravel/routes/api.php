@@ -127,5 +127,7 @@ Route::middleware('auth.jwt')->group(function () {
     Route::middleware('admin')->group(function () {
         Route::get('/deadlines', [DeadlinesController::class, 'index']);
         Route::post('/deadlines', [DeadlinesController::class, 'store']);
+        Route::put('/deadlines/{id}', [DeadlinesController::class, 'update']);
+        Route::put('/deadlines/{id}/renew', [DeadlinesController::class, 'renew']);
     });
 });
