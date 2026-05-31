@@ -30,8 +30,29 @@ $app = Application::configure(basePath: dirname(__DIR__))
                     ], 422);
                 }
 
-                $code = method_exists($e, 'getStatusCode') ? $e->getStatusCode() : 500;
-                return response()->json(['message' => $e->getMessage()], $code);
+                if ($e instanceof \Illuminate\Database\QueryException && (($e->errorInfo[1] ?? null) === 1062)) {
+                    return response()->json([
+                        'message' => 'Conflitto dati',
+                        'error'   => class_basename($e),
+                    ], 409);
+                }
+
+                $status = method_exists($e, 'getStatusCode') ? $e->getStatusCode() : 500;
+                if ($status < 400 || $status > 599) {
+                    $status = 500;
+                }
+
+                $message = match ($status) {
+                    404 => 'Risorsa non trovata',
+                    409 => 'Conflitto dati',
+                    500 => 'Errore interno del server',
+                    default => $e->getMessage() ?: 'Errore API',
+                };
+
+                return response()->json([
+                    'message' => $message,
+                    'error'   => class_basename($e),
+                ], $status);
             }
         });
     })

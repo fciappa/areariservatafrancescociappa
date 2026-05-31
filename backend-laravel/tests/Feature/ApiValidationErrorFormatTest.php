@@ -57,4 +57,35 @@ class ApiValidationErrorFormatTest extends TestCase
                 'name' => 'Mario',
             ]);
     }
+
+    public function test_unknown_api_route_returns_standard_404_envelope(): void
+    {
+        $response = $this->getJson('/api/__test/missing-route');
+
+        $response->assertStatus(404)
+            ->assertJson([
+                'message' => 'Risorsa non trovata',
+            ])
+            ->assertJsonStructure([
+                'message',
+                'error',
+            ]);
+    }
+
+    public function test_runtime_exception_returns_standard_500_envelope(): void
+    {
+        $uri = '/api/__test/runtime-' . uniqid();
+
+        Route::get($uri, function () {
+            throw new \RuntimeException('Boom');
+        });
+
+        $response = $this->getJson($uri);
+
+        $response->assertStatus(500)
+            ->assertJson([
+                'message' => 'Errore interno del server',
+                'error' => 'RuntimeException',
+            ]);
+    }
 }
