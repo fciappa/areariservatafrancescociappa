@@ -1,5 +1,7 @@
 # Area Riservata – Laravel API Backend
 
+[![Backend CI](https://github.com/fciappa/areariservatafrancescociappa/actions/workflows/backend-ci.yml/badge.svg?branch=release/areariservata)](https://github.com/fciappa/areariservatafrancescociappa/actions/workflows/backend-ci.yml)
+
 Backend PHP/Laravel che sostituisce il precedente backend Node.js/Express per la compatibilità con Hostinger shared hosting.
 
 ## Setup locale
@@ -13,6 +15,8 @@ Backend PHP/Laravel che sostituisce il precedente backend Node.js/Express per la
 
 - Workflow GitHub Actions: `.github/workflows/backend-ci.yml`
 - Esegue i test backend (`phpunit`) ad ogni push e pull request
+- Link workflow: https://github.com/fciappa/areariservatafrancescociappa/actions/workflows/backend-ci.yml
+- Link run su branch release (artifact `smoke-report`): https://github.com/fciappa/areariservatafrancescociappa/actions/workflows/backend-ci.yml?query=branch%3Arelease%2Fareariservata
 
 ### Requisiti
 - PHP 8.1+

@@ -1,6 +1,13 @@
 # Area Riservata - Francesco Ciappa
 
+[![Backend CI](https://github.com/fciappa/areariservatafrancescociappa/actions/workflows/backend-ci.yml/badge.svg?branch=release/areariservata)](https://github.com/fciappa/areariservatafrancescociappa/actions/workflows/backend-ci.yml)
+
 Applicazione web personale per la gestione di collaboratori, clienti, tariffe, ore e fatture.
+
+## Stato operativo
+
+- Backend CI workflow: https://github.com/fciappa/areariservatafrancescociappa/actions/workflows/backend-ci.yml
+- Ultimi run (con artifact smoke-report): https://github.com/fciappa/areariservatafrancescociappa/actions/workflows/backend-ci.yml?query=branch%3Arelease%2Fareariservata
 
 ## Stack
 - **Frontend**: Vue 3 + Vite + Vue Router + Pinia
