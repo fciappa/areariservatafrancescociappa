@@ -98,6 +98,30 @@ CREATE TABLE IF NOT EXISTS projects (
 );
 
 -- -----------------------------------------------------------
+-- SCADENZE CLIENTI (domini/hosting/database, ecc.)
+-- -----------------------------------------------------------
+CREATE TABLE IF NOT EXISTS client_deadlines (
+    id             INT UNSIGNED    AUTO_INCREMENT PRIMARY KEY,
+    client_id      INT UNSIGNED    NOT NULL,
+    due_date       DATE            NOT NULL,
+    item_type      VARCHAR(120)    NOT NULL,
+    description    VARCHAR(255)    NOT NULL,
+    linked_to      VARCHAR(255)    NULL,
+    avada_version  VARCHAR(30)     NULL,
+    php_version    VARCHAR(30)     NULL,
+    mysql_version  VARCHAR(30)     NULL,
+    wp_version     VARCHAR(30)     NULL,
+    test_email     VARCHAR(60)     NULL,
+    notes          VARCHAR(500)    NULL,
+    line_ref       VARCHAR(60)     NULL,
+    amount         DECIMAL(10,2)   NULL,
+    is_active      BOOLEAN         NOT NULL DEFAULT TRUE,
+    created_at     TIMESTAMP       DEFAULT CURRENT_TIMESTAMP,
+    updated_at     TIMESTAMP       DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_cd_client FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE
+);
+
+-- -----------------------------------------------------------
 -- TARIFFARIO
 -- -----------------------------------------------------------
 CREATE TABLE IF NOT EXISTS tariffs (
@@ -235,6 +259,8 @@ CREATE INDEX idx_invoices_date          ON invoices           (client_id, invoic
 CREATE INDEX idx_invoices_status        ON invoices           (status);
 CREATE INDEX idx_projects_client        ON projects           (client_id);
 CREATE INDEX idx_tariff_assignments     ON tariff_assignments (project_id, collaborator_id);
+CREATE INDEX idx_cd_client_due_date     ON client_deadlines   (client_id, due_date);
+CREATE INDEX idx_cd_due_date            ON client_deadlines   (due_date);
 CREATE INDEX idx_refresh_tokens_user    ON refresh_tokens     (user_id);
 
 -- -----------------------------------------------------------

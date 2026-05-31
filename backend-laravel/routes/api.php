@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\InvoicesController;
 use App\Http\Controllers\Api\CollabInvoicesController;
 use App\Http\Controllers\Api\ReferentController;
 use App\Http\Controllers\Api\UsersController;
+use App\Http\Controllers\Api\DeadlinesController;
 use Illuminate\Support\Facades\Route;
 
 // ── Auth (public) ─────────────────────────────────────────
@@ -120,5 +121,11 @@ Route::middleware('auth.jwt')->group(function () {
         Route::post('/users',               [UsersController::class, 'store']);
         Route::put('/users/{id}/password',  [UsersController::class, 'changePassword']);
         Route::put('/users/{id}/toggle',    [UsersController::class, 'toggle']);
+    });
+
+    // Deadlines (admin only)
+    Route::middleware('admin')->group(function () {
+        Route::get('/deadlines', [DeadlinesController::class, 'index']);
+        Route::post('/deadlines', [DeadlinesController::class, 'store']);
     });
 });

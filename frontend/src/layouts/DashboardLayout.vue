@@ -40,6 +40,7 @@
           <NavLink to="/collaborators" icon="👥" label="Collaboratori"      @click="sidebarOpen = false" />
           <NavLink to="/clients"       icon="🏢" label="Clienti"            @click="sidebarOpen = false" />
           <NavLink to="/projects"      icon="📁" label="Progetti"           @click="sidebarOpen = false" />
+          <NavLink to="/deadlines"     icon="📌" label="Scadenze"           @click="sidebarOpen = false" />
           <NavLink to="/tariffs"       icon="💰" label="Tariffario"         @click="sidebarOpen = false" />
 
           <div class="nav-group-label">Ore</div>
