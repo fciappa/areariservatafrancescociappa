@@ -37,6 +37,27 @@ $app = Application::configure(basePath: dirname(__DIR__))
                     ], 409);
                 }
 
+                if ($e instanceof \Illuminate\Database\QueryException) {
+                    $sqlState = (string) ($e->errorInfo[0] ?? '');
+                    $driverCode = (int) ($e->errorInfo[1] ?? 0);
+                    $exceptionCode = (string) $e->getCode();
+                    $msg = strtolower((string) $e->getMessage());
+                    $isUniqueViolation =
+                        $driverCode === 1062 ||
+                        $driverCode === 19 ||
+                        $sqlState === '23000' ||
+                        $exceptionCode === '23000' ||
+                        str_contains($msg, 'duplicate') ||
+                        str_contains($msg, 'unique constraint');
+
+                    if ($isUniqueViolation) {
+                        return response()->json([
+                            'message' => 'Conflitto dati',
+                            'error'   => class_basename($e),
+                        ], 409);
+                    }
+                }
+
                 $status = method_exists($e, 'getStatusCode') ? $e->getStatusCode() : 500;
                 if ($status < 400 || $status > 599) {
                     $status = 500;
