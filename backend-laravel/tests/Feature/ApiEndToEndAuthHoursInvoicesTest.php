@@ -29,25 +29,8 @@ class ApiEndToEndAuthHoursInvoicesTest extends TestCase
 
         DB::purge('sqlite');
         DB::reconnect('sqlite');
-
-        $this->registerSqliteFunctions();
         $this->createSchema();
         $this->seedEndToEndDataset();
-    }
-
-    private function registerSqliteFunctions(): void
-    {
-        $pdo = DB::connection()->getPdo();
-
-        if (method_exists($pdo, 'sqliteCreateFunction')) {
-            $pdo->sqliteCreateFunction('FROM_UNIXTIME', function ($timestamp) {
-                return date('Y-m-d H:i:s', (int) $timestamp);
-            }, 1);
-
-            $pdo->sqliteCreateFunction('NOW', function () {
-                return date('Y-m-d H:i:s');
-            }, 0);
-        }
     }
 
     private function createSchema(): void

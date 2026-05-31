@@ -8,6 +8,7 @@ use App\Support\ApiValidationRules;
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -74,10 +75,11 @@ class AuthController extends Controller
         $refreshToken = $this->signRefresh($user->id);
 
         $decoded = JWT::decode($refreshToken, new Key(env('JWT_REFRESH_SECRET'), 'HS256'));
-        DB::insert(
-            'INSERT INTO refresh_tokens (user_id, token, expires_at) VALUES (?, ?, FROM_UNIXTIME(?))',
-            [$user->id, $refreshToken, $decoded->exp]
-        );
+        DB::table('refresh_tokens')->insert([
+            'user_id' => $user->id,
+            'token' => $refreshToken,
+            'expires_at' => Carbon::createFromTimestamp((int) $decoded->exp)->toDateTimeString(),
+        ]);
 
         Log::info('Login: successo', ['user_id' => $user->id, 'username' => $user->username, 'role' => $user->role]);
 
@@ -108,11 +110,11 @@ class AuthController extends Controller
             return response()->json(['message' => 'Refresh token scaduto o non valido'], 401);
         }
 
-        $tokens = DB::select(
-            'SELECT * FROM refresh_tokens WHERE token = ? AND expires_at > NOW()',
-            [$refreshToken]
-        );
-        if (empty($tokens)) {
+        $tokenExists = DB::table('refresh_tokens')
+            ->where('token', $refreshToken)
+            ->where('expires_at', '>', now())
+            ->exists();
+        if (!$tokenExists) {
             Log::warning('Refresh: token non trovato in DB', ['user_id' => $payload->id]);
             return response()->json(['message' => 'Refresh token non valido'], 401);
         }
@@ -132,7 +134,7 @@ class AuthController extends Controller
     {
         $refreshToken = $request->input('refreshToken');
         if ($refreshToken) {
-            DB::delete('DELETE FROM refresh_tokens WHERE token = ?', [$refreshToken]);
+            DB::table('refresh_tokens')->where('token', $refreshToken)->delete();
         }
         Log::info('Logout effettuato', ['ip' => $request->ip()]);
         return response()->json(['message' => 'Logout effettuato']);
