@@ -1,6 +1,7 @@
 param(
     [string]$BaseUrl = "http://127.0.0.1:8000",
     [switch]$SkipAuthChecks,
+    [string]$ProtectedPath = "/api/users",
     [switch]$VerboseOutput
 )
 
@@ -69,7 +70,6 @@ function Invoke-Api {
 }
 
 $checks = @()
-$authHeaders = @{}
 
 Write-Output "Smoke API start: $BaseUrl"
 
@@ -87,29 +87,62 @@ if ($r422.Body -and $r422.Body.errors -and $r422.Body.errors.password) {
 $pass422 = $r422.StatusCode -eq 422 -and $r422.Body -and $r422.Body.message -eq "Dati non validi" -and $hasPasswordError
 $checks += [pscustomobject]@{ Name = "422 envelope"; Passed = $pass422; Detail = "status=$($r422.StatusCode) message=$($r422.Body.message)" }
 
-# 3) Optional auth path check (requires credentials in env)
+# 3) Optional auth flow checks (requires credentials in env)
 if (-not $SkipAuthChecks) {
     $username = $env:SMOKE_USER
     $password = $env:SMOKE_PASS
 
     if ([string]::IsNullOrWhiteSpace($username) -or [string]::IsNullOrWhiteSpace($password)) {
-        $checks += [pscustomobject]@{ Name = "Auth login"; Passed = $true; Detail = "skipped (set SMOKE_USER/SMOKE_PASS to enable)" }
+        $checks += [pscustomobject]@{ Name = "Auth flow"; Passed = $true; Detail = "skipped (set SMOKE_USER/SMOKE_PASS to enable)" }
     }
     else {
+        $protectedPre = Invoke-Api -Method "GET" -Url "$BaseUrl$ProtectedPath"
+        $prePass = $protectedPre.StatusCode -in @(401, 403)
+        $checks += [pscustomobject]@{ Name = "Protected route before login"; Passed = $prePass; Detail = "GET $ProtectedPath status=$($protectedPre.StatusCode)" }
+
         $login = Invoke-Api -Method "POST" -Url "$BaseUrl/api/auth/login" -Body @{ username = $username; password = $password }
         $token = $null
+        $refreshToken = $null
         if ($login.Body -and $login.Body.accessToken) {
             $token = [string]$login.Body.accessToken
         }
+        if ($login.Body -and $login.Body.refreshToken) {
+            $refreshToken = [string]$login.Body.refreshToken
+        }
 
-        $authPass = $login.StatusCode -eq 200 -and -not [string]::IsNullOrWhiteSpace($token)
-        $checks += [pscustomobject]@{ Name = "Auth login"; Passed = $authPass; Detail = "status=$($login.StatusCode) token=$([bool]$token)" }
+        $authPass = $login.StatusCode -eq 200 -and -not [string]::IsNullOrWhiteSpace($token) -and -not [string]::IsNullOrWhiteSpace($refreshToken)
+        $checks += [pscustomobject]@{ Name = "Auth login"; Passed = $authPass; Detail = "status=$($login.StatusCode) accessToken=$([bool]$token) refreshToken=$([bool]$refreshToken)" }
 
         if ($authPass) {
             $authHeaders = @{ Authorization = "Bearer $token" }
-            $users = Invoke-Api -Method "GET" -Url "$BaseUrl/api/users" -Headers $authHeaders
-            $usersPass = $users.StatusCode -eq 200
-            $checks += [pscustomobject]@{ Name = "Auth protected route"; Passed = $usersPass; Detail = "GET /api/users status=$($users.StatusCode)" }
+            $protected = Invoke-Api -Method "GET" -Url "$BaseUrl$ProtectedPath" -Headers $authHeaders
+            $protectedPass = $protected.StatusCode -eq 200
+            $checks += [pscustomobject]@{ Name = "Protected route with access token"; Passed = $protectedPass; Detail = "GET $ProtectedPath status=$($protected.StatusCode)" }
+
+            $refresh = Invoke-Api -Method "POST" -Url "$BaseUrl/api/auth/refresh" -Body @{ refreshToken = $refreshToken }
+            $newAccessToken = $null
+            if ($refresh.Body -and $refresh.Body.accessToken) {
+                $newAccessToken = [string]$refresh.Body.accessToken
+            }
+            $refreshPass = $refresh.StatusCode -eq 200 -and -not [string]::IsNullOrWhiteSpace($newAccessToken)
+            $checks += [pscustomobject]@{ Name = "Auth refresh"; Passed = $refreshPass; Detail = "status=$($refresh.StatusCode) accessToken=$([bool]$newAccessToken)" }
+
+            if ($refreshPass) {
+                $newHeaders = @{ Authorization = "Bearer $newAccessToken" }
+                $protected2 = Invoke-Api -Method "GET" -Url "$BaseUrl$ProtectedPath" -Headers $newHeaders
+                $protected2Pass = $protected2.StatusCode -eq 200
+                $checks += [pscustomobject]@{ Name = "Protected route with refreshed token"; Passed = $protected2Pass; Detail = "GET $ProtectedPath status=$($protected2.StatusCode)" }
+            }
+
+            $logout = Invoke-Api -Method "POST" -Url "$BaseUrl/api/auth/logout" -Body @{ refreshToken = $refreshToken }
+            $logoutPass = $logout.StatusCode -eq 200 -and $logout.Body -and $logout.Body.message -eq "Logout effettuato"
+            $checks += [pscustomobject]@{ Name = "Auth logout"; Passed = $logoutPass; Detail = "status=$($logout.StatusCode) message=$($logout.Body.message)" }
+
+            if ($logoutPass) {
+                $refreshAfterLogout = Invoke-Api -Method "POST" -Url "$BaseUrl/api/auth/refresh" -Body @{ refreshToken = $refreshToken }
+                $refreshAfterLogoutPass = $refreshAfterLogout.StatusCode -eq 401
+                $checks += [pscustomobject]@{ Name = "Refresh token invalid after logout"; Passed = $refreshAfterLogoutPass; Detail = "status=$($refreshAfterLogout.StatusCode)" }
+            }
         }
     }
 }

@@ -4,7 +4,7 @@ Script rapido per verificare dopo deploy:
 
 - envelope 404 standard
 - envelope 422 standard
-- login opzionale e accesso route protetta
+- flusso auth completo opzionale: login, refresh, route protetta, logout, invalidazione refresh token
 
 ## Script
 
@@ -28,9 +28,16 @@ $env:SMOKE_PASS = "admin_password"
 pwsh -File scripts/smoke-api.ps1 -BaseUrl "https://tuo-dominio"
 ```
 
+Se vuoi verificare una route protetta diversa da quella di default (`/api/users`):
+
+```powershell
+pwsh -File scripts/smoke-api.ps1 -BaseUrl "https://tuo-dominio" -ProtectedPath "/api/projects"
+```
+
 ## Opzioni utili
 
 - `-SkipAuthChecks` per saltare completamente i controlli login/protected
+- `-ProtectedPath` per impostare la route protetta da verificare nel flusso auth
 - `-VerboseOutput` per output diagnostico aggiuntivo in caso di failure
 
 ## Exit code
