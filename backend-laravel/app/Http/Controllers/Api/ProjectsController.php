@@ -18,13 +18,20 @@ class ProjectsController extends Controller
             FROM projects p
             JOIN clients c ON c.id = p.client_id
             LEFT JOIN (
-                SELECT pr.project_id,
+                SELECT t.project_id,
                        COUNT(*) AS referents_count,
                        GROUP_CONCAT(u.username ORDER BY u.username SEPARATOR ", ") AS referents_list
-                FROM project_referents pr
-                JOIN users u ON u.id = pr.user_id
+                FROM (
+                    SELECT pr.project_id, pr.user_id
+                    FROM project_referents pr
+                    UNION
+                    SELECT p2.id AS project_id, cr.user_id
+                    FROM client_referents cr
+                    JOIN projects p2 ON p2.client_id = cr.client_id
+                ) t
+                JOIN users u ON u.id = t.user_id
                 WHERE u.role = "referent"
-                GROUP BY pr.project_id
+                GROUP BY t.project_id
             ) r ON r.project_id = p.id
             ORDER BY p.created_at DESC
         ');
@@ -56,12 +63,24 @@ class ProjectsController extends Controller
         ', [$id]);
 
         $referents = DB::select('
-            SELECT pr.id, pr.user_id, u.username, u.email
-            FROM project_referents pr
-            JOIN users u ON u.id = pr.user_id
-            WHERE pr.project_id = ?
+            SELECT t.user_id, u.username, u.email,
+                   MIN(t.source) AS source
+            FROM (
+                SELECT pr.user_id, "project" AS source
+                FROM project_referents pr
+                WHERE pr.project_id = ?
+
+                UNION ALL
+
+                SELECT cr.user_id, "client" AS source
+                FROM client_referents cr
+                JOIN projects p2 ON p2.client_id = cr.client_id
+                WHERE p2.id = ?
+            ) t
+            JOIN users u ON u.id = t.user_id
+            GROUP BY t.user_id, u.username, u.email
             ORDER BY u.username
-        ', [$id]);
+        ', [$id, $id]);
 
         return response()->json(array_merge((array) $projects[0], [
             'assignments' => $assignments,

@@ -69,6 +69,7 @@
             </td>
             <td class="actions">
               <button class="btn-icon" title="Modifica" @click="openEdit(c)">✏️</button>
+              <button class="btn-icon" title="Aggiungi uno o più referenti" @click="openReferents(c)">📉</button>
               <button
                 class="btn-icon"
                 :title="c.is_active ? 'Disattiva' : 'Riattiva'"
@@ -157,6 +158,70 @@
         </div>
       </div>
     </Teleport>
+
+    <Teleport to="body">
+      <div v-if="referentModal.open" class="modal-overlay" @click.self="referentModal.open = false">
+        <div class="modal referents-modal">
+          <div class="modal-header">
+            <h3>📉 Referenti cliente — {{ referentModal.client?.company_name }}</h3>
+            <button class="modal-close" @click="referentModal.open = false">✕</button>
+          </div>
+
+          <div class="modal-form">
+            <div v-if="referentModal.loading" class="skeleton-list">
+              <div v-for="i in 2" :key="i" class="skeleton-row" />
+            </div>
+
+            <template v-else>
+              <div class="field">
+                <label>Referenti assegnati</label>
+                <div v-if="!referentModal.assigned.length" class="empty-mini">Nessun referente assegnato.</div>
+                <table v-else class="mini-table">
+                  <thead>
+                    <tr>
+                      <th>Utente</th>
+                      <th>Anagrafica</th>
+                      <th>Email</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="r in referentModal.assigned" :key="r.user_id">
+                      <td class="fw">{{ r.username }}</td>
+                      <td>{{ r.first_name ? `${r.first_name} ${r.last_name}` : '—' }}</td>
+                      <td>{{ r.email }}</td>
+                      <td>
+                        <button class="btn-icon" title="Rimuovi referente" @click="removeClientReferent(r)">🗑️</button>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div class="field">
+                <label>Aggiungi uno o più referenti</label>
+                <div class="check-list">
+                  <label v-for="u in availableReferentUsers" :key="u.id" class="check-item">
+                    <input type="checkbox" :value="u.id" v-model="referentModal.selectedUserIds" />
+                    <span>{{ u.username }} — {{ u.display_name }}</span>
+                  </label>
+                </div>
+              </div>
+
+              <div v-if="referentModal.error" class="alert-error">{{ referentModal.error }}</div>
+
+              <div class="modal-footer">
+                <button type="button" class="btn-secondary" @click="referentModal.open = false">Chiudi</button>
+                <button class="btn-primary" :disabled="referentModal.saving" @click="addClientReferents">
+                  <span v-if="referentModal.saving" class="spinner" />
+                  {{ referentModal.saving ? 'Salvataggio…' : '+ Aggiungi selezionati' }}
+                </button>
+              </div>
+            </template>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
@@ -166,6 +231,8 @@ import api from '../services/api.js';
 
 // ── State ────────────────────────────────────────────────
 const clients      = ref([]);
+const users        = ref([]);
+const referents    = ref([]);
 const loading      = ref(true);
 const search       = ref('');
 const showInactive = ref(false);
@@ -179,6 +246,15 @@ const form  = reactive({
   notes: '', is_active: true,
 });
 const formErrors = reactive({ company_name: '', vat_number: '' });
+const referentModal = reactive({
+  open: false,
+  loading: false,
+  saving: false,
+  error: '',
+  client: null,
+  assigned: [],
+  selectedUserIds: [],
+});
 
 // ── Computed ─────────────────────────────────────────────
 const filtered = computed(() => {
@@ -192,6 +268,16 @@ const filtered = computed(() => {
       (c.city ?? '').toLowerCase().includes(q)
     );
   });
+});
+
+const availableReferentUsers = computed(() => {
+  return users.value
+    .filter(u => u.is_active && u.role === 'referent')
+    .map(u => {
+      const r = referents.value.find(x => x.id == u.referent_id);
+      const displayName = r ? `${r.first_name} ${r.last_name}` : 'Anagrafica non collegata';
+      return { ...u, display_name: displayName };
+    });
 });
 
 // ── Helpers ──────────────────────────────────────────────
@@ -219,8 +305,14 @@ function validate() {
 async function load() {
   loading.value = true;
   try {
-    const { data } = await api.get('/clients');
-    clients.value = data;
+    const [c, u, r] = await Promise.all([
+      api.get('/clients'),
+      api.get('/users'),
+      api.get('/referents'),
+    ]);
+    clients.value = c.data;
+    users.value = u.data;
+    referents.value = r.data;
   } finally {
     loading.value = false;
   }
@@ -279,6 +371,53 @@ async function toggleActive(c) {
   const label = c.is_active ? 'Disattivare' : 'Riattivare';
   if (!confirm(`${label} ${c.company_name}?`)) return;
   await api.put(`/clients/${c.id}`, { ...c, is_active: !c.is_active });
+  await load();
+}
+
+async function openReferents(client) {
+  referentModal.open = true;
+  referentModal.loading = true;
+  referentModal.saving = false;
+  referentModal.error = '';
+  referentModal.client = client;
+  referentModal.selectedUserIds = [];
+
+  try {
+    const { data } = await api.get(`/clients/${client.id}/referents`);
+    referentModal.assigned = data;
+  } finally {
+    referentModal.loading = false;
+  }
+}
+
+async function addClientReferents() {
+  if (!referentModal.selectedUserIds.length) {
+    referentModal.error = 'Seleziona almeno un referente';
+    return;
+  }
+
+  referentModal.saving = true;
+  referentModal.error = '';
+
+  try {
+    await api.post(`/clients/${referentModal.client.id}/referents`, {
+      user_ids: referentModal.selectedUserIds,
+    });
+    const { data } = await api.get(`/clients/${referentModal.client.id}/referents`);
+    referentModal.assigned = data;
+    referentModal.selectedUserIds = [];
+    await load();
+  } catch (err) {
+    referentModal.error = err.response?.data?.message ?? 'Errore durante il salvataggio referenti.';
+  } finally {
+    referentModal.saving = false;
+  }
+}
+
+async function removeClientReferent(r) {
+  if (!confirm(`Rimuovere ${r.username} dai referenti di questo cliente?`)) return;
+  await api.delete(`/clients/${referentModal.client.id}/referents/${r.user_id}`);
+  referentModal.assigned = referentModal.assigned.filter(x => x.user_id !== r.user_id);
   await load();
 }
 
@@ -354,4 +493,60 @@ onMounted(load);
 .field-inline label { margin: 0; }
 
 .field-inline input[type="checkbox"] { width: 1rem; height: 1rem; cursor: pointer; }
+
+.referents-modal {
+  max-width: min(900px, 96vw);
+}
+
+.mini-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.84rem;
+}
+
+.mini-table th {
+  text-align: left;
+  padding: 0.4rem 0.5rem;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #6b7280;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.mini-table td {
+  padding: 0.45rem 0.5rem;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.check-list {
+  max-height: 180px;
+  overflow: auto;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 0.35rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.check-item {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  font-size: 0.86rem;
+  color: #374151;
+  padding: 0.35rem;
+  border-radius: 6px;
+}
+
+.check-item:hover {
+  background: #f9fafb;
+}
+
+.empty-mini {
+  color: #9ca3af;
+  font-size: 0.86rem;
+  padding: 0.4rem 0;
+}
 </style>

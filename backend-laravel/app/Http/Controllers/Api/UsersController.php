@@ -13,7 +13,11 @@ class UsersController extends Controller
     public function index()
     {
         $rows = DB::select(
-            'SELECT id, username, email, role, collaborator_id, is_active, created_at FROM users ORDER BY username'
+            'SELECT u.id, u.username, u.email, u.role, u.collaborator_id, u.referent_id, u.is_active, u.created_at,
+                    r.first_name AS referent_first_name, r.last_name AS referent_last_name
+             FROM users u
+             LEFT JOIN referents r ON r.id = u.referent_id
+             ORDER BY u.username'
         );
         return response()->json($rows);
     }
@@ -26,6 +30,7 @@ class UsersController extends Controller
             'password_hash'   => Hash::make($request->input('password')),
             'role'            => $request->input('role', 'collaborator'),
             'collaborator_id' => $request->input('collaborator_id'),
+            'referent_id'     => $request->input('referent_id'),
         ]);
         Log::info('Users: creato', ['user_id' => $id, 'username' => $request->input('username'), 'role' => $request->input('role', 'collaborator')]);
         return response()->json(['id' => $id], 201);

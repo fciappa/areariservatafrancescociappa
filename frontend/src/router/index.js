@@ -10,6 +10,7 @@ const routes = [
     children: [
       { path: '',              component: () => import('../pages/DashboardPage.vue') },
       { path: 'collaborators',  component: () => import('../pages/CollaboratorsPage.vue'), meta: { adminOnly: true } },
+      { path: 'referents',      component: () => import('../pages/ReferentsPage.vue'),     meta: { adminOnly: true } },
       { path: 'clients',        component: () => import('../pages/ClientsPage.vue'),       meta: { adminOnly: true } },
       { path: 'projects',       component: () => import('../pages/ProjectsPage.vue'),       meta: { adminOnly: true } },
       { path: 'deadlines',      component: () => import('../pages/DeadlinesPage.vue'),      meta: { adminOnly: true } },

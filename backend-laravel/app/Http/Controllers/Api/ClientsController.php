@@ -65,4 +65,73 @@ class ClientsController extends Controller
         Log::info('Clients: disattivato', ['id' => $id]);
         return response()->json(['message' => 'Disattivato']);
     }
+
+    public function referents(int $id)
+    {
+        $rows = DB::select(
+            'SELECT cr.id, cr.user_id, u.username, u.email, u.referent_id,
+                    r.first_name, r.last_name
+             FROM client_referents cr
+             JOIN users u ON u.id = cr.user_id
+             LEFT JOIN referents r ON r.id = u.referent_id
+             WHERE cr.client_id = ?
+             ORDER BY u.username',
+            [$id]
+        );
+
+        return response()->json($rows);
+    }
+
+    public function addReferents(Request $request, int $id)
+    {
+        $userIds = $request->input('user_ids');
+        if (!$userIds) {
+            $single = $request->input('user_id');
+            $userIds = $single ? [$single] : [];
+        }
+
+        if (!is_array($userIds) || empty($userIds)) {
+            return response()->json(['message' => 'user_ids obbligatorio'], 400);
+        }
+
+        $clientRows = DB::select('SELECT id FROM clients WHERE id = ? LIMIT 1', [$id]);
+        if (empty($clientRows)) {
+            return response()->json(['message' => 'Cliente non trovato'], 404);
+        }
+
+        $inserted = 0;
+        foreach ($userIds as $userId) {
+            $userRows = DB::select('SELECT id, role, is_active FROM users WHERE id = ? LIMIT 1', [$userId]);
+            $target = $userRows[0] ?? null;
+            if (!$target || $target->role !== 'referent' || !$target->is_active) {
+                continue;
+            }
+
+            try {
+                DB::table('client_referents')->insert([
+                    'client_id' => $id,
+                    'user_id'   => $target->id,
+                ]);
+                $inserted++;
+            } catch (\Illuminate\Database\QueryException $e) {
+                if (($e->errorInfo[1] ?? null) !== 1062) {
+                    throw $e;
+                }
+            }
+        }
+
+        Log::info('Clients: referenti assegnati', ['client_id' => $id, 'count' => $inserted]);
+        return response()->json(['inserted' => $inserted]);
+    }
+
+    public function removeReferent(int $id, int $userId)
+    {
+        DB::table('client_referents')
+            ->where('client_id', $id)
+            ->where('user_id', $userId)
+            ->delete();
+
+        Log::info('Clients: referente rimosso', ['client_id' => $id, 'user_id' => $userId]);
+        return response()->json(['success' => true]);
+    }
 }

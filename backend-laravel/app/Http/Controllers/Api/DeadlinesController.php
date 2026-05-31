@@ -14,6 +14,7 @@ class DeadlinesController extends Controller
         $sortMap = [
             'due_date'      => 'd.due_date',
             'company_name'  => 'c.company_name',
+            'project_name'  => 'p.name',
             'item_type'     => 'd.item_type',
             'description'   => 'd.description',
             'linked_to'     => 'd.linked_to',
@@ -31,16 +32,27 @@ class DeadlinesController extends Controller
         $sortColumn = $sortMap[$sortBy] ?? 'd.due_date';
 
         $sql = '
-            SELECT d.*, c.company_name
+            SELECT d.*, c.company_name, p.name AS project_name
             FROM client_deadlines d
             JOIN clients c ON c.id = d.client_id
+            LEFT JOIN projects p ON p.id = d.project_id
         ';
 
         $bindings = [];
+        $conditions = [];
 
         if ($request->filled('client_id')) {
-            $sql .= ' WHERE d.client_id = ? ';
+            $conditions[] = 'd.client_id = ?';
             $bindings[] = (int) $request->query('client_id');
+        }
+
+        if ($request->filled('project_id')) {
+            $conditions[] = 'd.project_id = ?';
+            $bindings[] = (int) $request->query('project_id');
+        }
+
+        if (!empty($conditions)) {
+            $sql .= ' WHERE ' . implode(' AND ', $conditions) . ' ';
         }
 
         $sql .= " ORDER BY {$sortColumn} {$sortDir}, d.description ASC, d.id ASC ";
@@ -64,8 +76,17 @@ class DeadlinesController extends Controller
             return response()->json(['message' => 'Cliente non trovato'], 404);
         }
 
+        $projectId = $request->input('project_id');
+        if ($projectId) {
+            $projectRows = DB::select('SELECT id FROM projects WHERE id = ? AND client_id = ? LIMIT 1', [$projectId, $clientId]);
+            if (empty($projectRows)) {
+                return response()->json(['message' => 'Progetto non valido per il cliente selezionato'], 422);
+            }
+        }
+
         $id = DB::table('client_deadlines')->insertGetId([
             'client_id'      => $clientId,
+            'project_id'     => $projectId ?: null,
             'due_date'       => $request->input('due_date'),
             'item_type'      => $request->input('item_type'),
             'description'    => $request->input('description'),
@@ -84,9 +105,10 @@ class DeadlinesController extends Controller
         Log::info('Deadlines: creata', ['id' => $id, 'client_id' => $clientId]);
 
         $rows = DB::select('
-            SELECT d.*, c.company_name
+            SELECT d.*, c.company_name, p.name AS project_name
             FROM client_deadlines d
             JOIN clients c ON c.id = d.client_id
+            LEFT JOIN projects p ON p.id = d.project_id
             WHERE d.id = ?
             LIMIT 1
         ', [$id]);
@@ -114,8 +136,17 @@ class DeadlinesController extends Controller
             return response()->json(['message' => 'Cliente non trovato'], 404);
         }
 
+        $projectId = $request->input('project_id');
+        if ($projectId) {
+            $projectRows = DB::select('SELECT id FROM projects WHERE id = ? AND client_id = ? LIMIT 1', [$projectId, $clientId]);
+            if (empty($projectRows)) {
+                return response()->json(['message' => 'Progetto non valido per il cliente selezionato'], 422);
+            }
+        }
+
         DB::table('client_deadlines')->where('id', $id)->update([
             'client_id'      => $clientId,
+            'project_id'     => $projectId ?: null,
             'due_date'       => $request->input('due_date'),
             'item_type'      => $request->input('item_type'),
             'description'    => $request->input('description'),
@@ -134,9 +165,10 @@ class DeadlinesController extends Controller
         Log::info('Deadlines: aggiornata', ['id' => $id, 'client_id' => $clientId]);
 
         $updated = DB::select('
-            SELECT d.*, c.company_name
+            SELECT d.*, c.company_name, p.name AS project_name
             FROM client_deadlines d
             JOIN clients c ON c.id = d.client_id
+            LEFT JOIN projects p ON p.id = d.project_id
             WHERE d.id = ?
             LIMIT 1
         ', [$id]);
@@ -156,9 +188,10 @@ class DeadlinesController extends Controller
         Log::info('Deadlines: rinnovata di un anno', ['id' => $id, 'old_due_date' => $rows[0]->due_date]);
 
         $updated = DB::select('
-            SELECT d.*, c.company_name
+            SELECT d.*, c.company_name, p.name AS project_name
             FROM client_deadlines d
             JOIN clients c ON c.id = d.client_id
+            LEFT JOIN projects p ON p.id = d.project_id
             WHERE d.id = ?
             LIMIT 1
         ', [$id]);

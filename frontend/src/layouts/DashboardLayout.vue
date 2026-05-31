@@ -38,6 +38,7 @@
         <template v-if="auth.isAdmin">
           <div class="nav-group-label">Gestione</div>
           <NavLink to="/collaborators" icon="👥" label="Collaboratori"      @click="sidebarOpen = false" />
+          <NavLink to="/referents"     icon="📉" label="Referenti"          @click="sidebarOpen = false" />
           <NavLink to="/clients"       icon="🏢" label="Clienti"            @click="sidebarOpen = false" />
           <NavLink to="/projects"      icon="📁" label="Progetti"           @click="sidebarOpen = false" />
           <NavLink to="/deadlines"     icon="📌" label="Scadenze"           @click="sidebarOpen = false" />
@@ -86,7 +87,7 @@ const router      = useRouter();
 const sidebarOpen = ref(false);
 
 const userInitials = computed(() => {
-  if (auth.isCollaborator && auth.user?.first_name) {
+  if (!auth.isAdmin && auth.user?.first_name) {
     return ((auth.user.first_name[0] ?? '') + (auth.user.last_name?.[0] ?? '')).toUpperCase();
   }
   return (auth.user?.username ?? '?').slice(0, 2).toUpperCase();

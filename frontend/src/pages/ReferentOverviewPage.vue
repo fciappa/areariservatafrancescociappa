@@ -83,6 +83,27 @@
           </tbody>
         </table>
       </section>
+
+      <section class="card">
+        <h3 class="card-title-sm">📌 Scadenze progetto</h3>
+        <div v-if="!deadlines.length" class="empty-small">Nessuna scadenza progetto nel mese selezionato.</div>
+        <table v-else class="mini-table">
+          <thead>
+            <tr><th>Data</th><th>Progetto</th><th>Cliente</th><th>Tipo</th><th>Descrizione</th><th>Collegato a</th><th>Importo</th></tr>
+          </thead>
+          <tbody>
+            <tr v-for="d in deadlines" :key="d.id">
+              <td class="mono">{{ formatDate(d.due_date) }}</td>
+              <td>{{ d.project_name }}</td>
+              <td>{{ d.company_name }}</td>
+              <td>{{ d.item_type }}</td>
+              <td>{{ d.description }}</td>
+              <td>{{ d.linked_to || '—' }}</td>
+              <td class="mono green">{{ d.amount != null ? `€ ${fmt(d.amount)}` : '—' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
     </template>
   </div>
 </template>
@@ -96,6 +117,7 @@ const selectedProject = ref('');
 const loading = ref(true);
 const summary = ref([]);
 const hours = ref([]);
+const deadlines = ref([]);
 
 const totalInvoicedHours = computed(() =>
   summary.value.reduce((s, p) => s + parseFloat(p.invoiced_hours || 0), 0)
@@ -131,12 +153,14 @@ async function load() {
   loading.value = true;
   try {
     const params = new URLSearchParams({ month: month.value });
-    const [s, h] = await Promise.all([
+    const [s, h, d] = await Promise.all([
       api.get(`/referent/projects/summary?${params}`),
       api.get(`/referent/projects/hours?${params}${selectedProject.value ? `&project_id=${selectedProject.value}` : ''}`),
+      api.get(`/referent/projects/deadlines?${params}${selectedProject.value ? `&project_id=${selectedProject.value}` : ''}`),
     ]);
     summary.value = s.data;
     hours.value = h.data;
+    deadlines.value = d.data;
   } finally {
     loading.value = false;
   }

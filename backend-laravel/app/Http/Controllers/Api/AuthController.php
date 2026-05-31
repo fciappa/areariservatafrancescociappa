@@ -17,6 +17,7 @@ class AuthController extends Controller
             'id'              => $user->id,
             'role'            => $user->role,
             'collaborator_id' => $user->collaborator_id,
+            'referent_id'     => $user->referent_id,
             'exp'             => time() + (int) env('JWT_EXPIRES_SECONDS', 900),
         ];
         return JWT::encode($payload, env('JWT_SECRET'), 'HS256');
@@ -63,6 +64,12 @@ class AuthController extends Controller
                 $firstName = $collab[0]->first_name;
                 $lastName  = $collab[0]->last_name;
             }
+        } elseif ($user->referent_id) {
+            $referent = DB::select('SELECT first_name, last_name FROM referents WHERE id = ? LIMIT 1', [$user->referent_id]);
+            if (!empty($referent)) {
+                $firstName = $referent[0]->first_name;
+                $lastName  = $referent[0]->last_name;
+            }
         }
 
         $accessToken  = $this->signAccess($user);
@@ -84,6 +91,7 @@ class AuthController extends Controller
                 'username'        => $user->username,
                 'role'            => $user->role,
                 'collaborator_id' => $user->collaborator_id,
+                'referent_id'     => $user->referent_id,
                 'first_name'      => $firstName,
                 'last_name'       => $lastName,
             ],

@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\HoursController;
 use App\Http\Controllers\Api\InvoicesController;
 use App\Http\Controllers\Api\CollabInvoicesController;
 use App\Http\Controllers\Api\ReferentController;
+use App\Http\Controllers\Api\ReferentsController;
 use App\Http\Controllers\Api\UsersController;
 use App\Http\Controllers\Api\DeadlinesController;
 use Illuminate\Support\Facades\Route;
@@ -37,6 +38,9 @@ Route::middleware('auth.jwt')->group(function () {
         Route::post('/clients',         [ClientsController::class, 'store']);
         Route::put('/clients/{id}',     [ClientsController::class, 'update']);
         Route::delete('/clients/{id}',  [ClientsController::class, 'destroy']);
+        Route::get('/clients/{id}/referents',            [ClientsController::class, 'referents']);
+        Route::post('/clients/{id}/referents',           [ClientsController::class, 'addReferents']);
+        Route::delete('/clients/{id}/referents/{userId}',[ClientsController::class, 'removeReferent']);
     });
 
     // Tariffs
@@ -65,6 +69,7 @@ Route::middleware('auth.jwt')->group(function () {
     Route::middleware('referent')->group(function () {
         Route::get('/referent/projects/summary', [ReferentController::class, 'projectSummary']);
         Route::get('/referent/projects/hours',   [ReferentController::class, 'projectHours']);
+        Route::get('/referent/projects/deadlines', [ReferentController::class, 'projectDeadlines']);
     });
 
     // Hours
@@ -121,6 +126,15 @@ Route::middleware('auth.jwt')->group(function () {
         Route::post('/users',               [UsersController::class, 'store']);
         Route::put('/users/{id}/password',  [UsersController::class, 'changePassword']);
         Route::put('/users/{id}/toggle',    [UsersController::class, 'toggle']);
+    });
+
+    // Referents anagrafica (admin only)
+    Route::middleware('admin')->group(function () {
+        Route::get('/referents',          [ReferentsController::class, 'index']);
+        Route::get('/referents/{id}',     [ReferentsController::class, 'show']);
+        Route::post('/referents',         [ReferentsController::class, 'store']);
+        Route::put('/referents/{id}',     [ReferentsController::class, 'update']);
+        Route::delete('/referents/{id}',  [ReferentsController::class, 'destroy']);
     });
 
     // Deadlines (admin only)

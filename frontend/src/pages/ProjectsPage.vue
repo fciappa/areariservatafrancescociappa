@@ -202,44 +202,6 @@
               </tbody>
             </table>
 
-            <div class="assign-form">
-              <h4>Referenti progetto</h4>
-              <div v-if="!assignModal.referents.length" class="empty-small">Nessun referente assegnato.</div>
-              <table v-else class="mini-table">
-                <thead>
-                  <tr>
-                    <th>Username</th>
-                    <th>Email</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="r in assignModal.referents" :key="r.id">
-                    <td class="fw">{{ r.username }}</td>
-                    <td>{{ r.email }}</td>
-                    <td>
-                      <button class="btn-icon" title="Rimuovi referente" @click="removeReferent(r)">🗑️</button>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-              <div class="form-row" style="margin-top:0.75rem">
-                <div class="field">
-                  <label>Aggiungi referente</label>
-                  <select v-model="newReferent.user_id">
-                    <option value="">Seleziona referente…</option>
-                    <option v-for="u in referents" :key="u.id" :value="u.id">{{ u.username }} — {{ u.email }}</option>
-                  </select>
-                </div>
-                <div class="field" style="align-self:end">
-                  <button class="btn-primary" :disabled="assignModal.saving" @click="addReferent">
-                    <span v-if="assignModal.saving" class="spinner" />
-                    {{ assignModal.saving ? 'Aggiunta…' : '+ Aggiungi referente' }}
-                  </button>
-                </div>
-              </div>
-            </div>
-
             <!-- Form nuova assegnazione -->
             <div class="assign-form">
               <h4>Aggiungi assegnazione</h4>
@@ -284,7 +246,6 @@ import api from '../services/api.js';
 const projects      = ref([]);
 const clients       = ref([]);
 const collaborators = ref([]);
-const referents     = ref([]);
 const tariffs       = ref([]);
 const loading       = ref(true);
 const saving        = ref(false);
@@ -299,10 +260,9 @@ const formErrors = reactive({ name: '', client_id: '', start_date: '' });
 
 const assignModal = reactive({
   open: false, project: null, loading: false,
-  assignments: [], referents: [], saving: false, saveError: '',
+  assignments: [], saving: false, saveError: '',
 });
 const newAssign  = reactive({ tariff_id: '', collaborator_id: '' });
-const newReferent = reactive({ user_id: '' });
 const assignErrors = reactive({ tariff_id: '' });
 
 // ── Computed ─────────────────────────────────────────────
@@ -346,18 +306,16 @@ function validate() {
 async function load() {
   loading.value = true;
   try {
-    const [p, c, co, t, u] = await Promise.all([
+    const [p, c, co, t] = await Promise.all([
       api.get('/projects'),
       api.get('/clients'),
       api.get('/collaborators'),
       api.get('/tariffs'),
-      api.get('/users'),
     ]);
     projects.value      = p.data;
     clients.value       = c.data.filter(x => x.is_active);
     collaborators.value = co.data.filter(x => x.is_active);
     tariffs.value       = t.data;
-    referents.value     = u.data.filter(x => x.is_active && x.role === 'referent');
   } finally {
     loading.value = false;
   }
@@ -402,12 +360,10 @@ async function openAssignments(p) {
   assignModal.loading    = true;
   assignModal.saveError  = '';
   Object.assign(newAssign, { tariff_id: '', collaborator_id: '' });
-  Object.assign(newReferent, { user_id: '' });
   assignErrors.tariff_id = '';
   try {
     const { data } = await api.get(`/projects/${p.id}`);
     assignModal.assignments = data.assignments;
-    assignModal.referents   = data.referents ?? [];
   } finally { assignModal.loading = false; }
 }
 
@@ -433,31 +389,6 @@ async function removeAssignment(a) {
   if (!confirm('Rimuovere questa assegnazione?')) return;
   await api.delete(`/projects/assignments/${a.id}`);
   assignModal.assignments = assignModal.assignments.filter(x => x.id !== a.id);
-}
-
-async function addReferent() {
-  if (!newReferent.user_id) {
-    assignModal.saveError = 'Seleziona un referente';
-    return;
-  }
-  assignModal.saveError = '';
-  assignModal.saving = true;
-  try {
-    await api.post(`/projects/${assignModal.project.id}/referents`, { user_id: newReferent.user_id });
-    const { data } = await api.get(`/projects/${assignModal.project.id}`);
-    assignModal.referents = data.referents ?? [];
-    newReferent.user_id = '';
-  } catch (err) {
-    assignModal.saveError = err.response?.data?.message ?? 'Errore.';
-  } finally {
-    assignModal.saving = false;
-  }
-}
-
-async function removeReferent(r) {
-  if (!confirm('Rimuovere questo referente dal progetto?')) return;
-  await api.delete(`/projects/referents/${r.id}`);
-  assignModal.referents = assignModal.referents.filter(x => x.id !== r.id);
 }
 
 onMounted(load);

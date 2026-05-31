@@ -68,6 +68,7 @@
             <tr v-if="isExpanded(d.id)" class="detail-row" :key="`detail-${d.id}`">
               <td colspan="7">
                 <div class="tech-grid">
+                  <div class="tech-item"><span class="tech-label">Progetto</span><span class="tech-value">{{ d.project_name || '—' }}</span></div>
                   <div class="tech-item"><span class="tech-label">Avada</span><span class="tech-value">{{ d.avada_version || '—' }}</span></div>
                   <div class="tech-item"><span class="tech-label">PHP</span><span class="tech-value">{{ d.php_version || '—' }}</span></div>
                   <div class="tech-item"><span class="tech-label">MySQL</span><span class="tech-value">{{ d.mysql_version || '—' }}</span></div>
@@ -100,6 +101,16 @@
                 </option>
               </select>
               <span v-if="formErrors.client_id" class="field-error">{{ formErrors.client_id }}</span>
+            </div>
+
+            <div class="field">
+              <label>Progetto <span class="optional">(opzionale, utile per vista referente)</span></label>
+              <select v-model="form.project_id" :disabled="!form.client_id">
+                <option value="">Nessun progetto</option>
+                <option v-for="p in projectsForSelectedClient" :key="p.id" :value="String(p.id)">
+                  {{ p.name }}
+                </option>
+              </select>
             </div>
 
             <div class="form-row">
@@ -205,6 +216,7 @@ const sortPreference = loadSortPreference();
 
 const deadlines = ref([]);
 const clients = ref([]);
+const projects = ref([]);
 const loading = ref(true);
 const saving = ref(false);
 const saveError = ref('');
@@ -256,6 +268,7 @@ const filtered = computed(() => {
       d.item_type,
       d.description,
       d.linked_to,
+      d.project_name,
       d.notes,
       d.company_name,
       d.php_version,
@@ -269,6 +282,11 @@ const filtered = computed(() => {
   });
 
   return rows;
+});
+
+const projectsForSelectedClient = computed(() => {
+  if (!form.client_id) return [];
+  return projects.value.filter((p) => String(p.client_id) === String(form.client_id) && p.is_active);
 });
 
 function toggleSort(key) {
@@ -303,6 +321,7 @@ function toggleDetails(id) {
 function emptyForm() {
   return {
     client_id: '',
+    project_id: '',
     due_date: today(),
     item_type: '',
     description: '',
@@ -367,6 +386,7 @@ function openEdit(deadline) {
 
   Object.assign(form, {
     client_id: String(deadline.client_id ?? ''),
+    project_id: deadline.project_id ? String(deadline.project_id) : '',
     due_date: deadline.due_date?.slice(0, 10) ?? today(),
     item_type: deadline.item_type ?? '',
     description: deadline.description ?? '',
@@ -395,7 +415,7 @@ function validate() {
 async function load() {
   loading.value = true;
   try {
-    const [deadlinesRes, clientsRes] = await Promise.all([
+    const [deadlinesRes, clientsRes, projectsRes] = await Promise.all([
       api.get('/deadlines', {
         params: {
           client_id: selectedClientId.value || undefined,
@@ -404,9 +424,11 @@ async function load() {
         },
       }),
       api.get('/clients'),
+      api.get('/projects'),
     ]);
     deadlines.value = deadlinesRes.data;
     clients.value = clientsRes.data;
+    projects.value = projectsRes.data;
   } finally {
     loading.value = false;
   }
@@ -422,6 +444,7 @@ async function save() {
     const payload = {
       ...form,
       client_id: Number(form.client_id),
+      project_id: form.project_id ? Number(form.project_id) : null,
       amount: form.amount === '' ? null : Number(form.amount),
     };
 
@@ -460,6 +483,12 @@ watch([selectedClientId, sortKey, sortDirection], async () => {
   await load();
 });
 
+watch(() => form.client_id, () => {
+  if (!form.project_id) return;
+  const exists = projectsForSelectedClient.value.some((p) => String(p.id) === String(form.project_id));
+  if (!exists) form.project_id = '';
+});
+
 onMounted(load);
 </script>
 
@@ -470,6 +499,14 @@ onMounted(load);
   gap: 0.75rem;
   margin-bottom: 1rem;
   flex-wrap: wrap;
+}
+
+.modal {
+  max-width: min(980px, 96vw);
+}
+
+.modal-form {
+  overflow-x: hidden;
 }
 
 .search-input,
@@ -636,7 +673,7 @@ onMounted(load);
 }
 
 .triple-row {
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 @media (max-width: 960px) {

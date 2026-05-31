@@ -28,6 +28,7 @@
             <th>Email</th>
             <th>Ruolo</th>
             <th>Collaboratore</th>
+            <th>Referente</th>
             <th>Stato</th>
             <th>Creato il</th>
             <th>Azioni</th>
@@ -46,6 +47,7 @@
               </span>
             </td>
             <td>{{ collabName(u.collaborator_id) || '—' }}</td>
+            <td>{{ referentName(u) || '—' }}</td>
             <td>
               <span :class="['badge', u.is_active ? 'active' : 'inactive']">
                 {{ u.is_active ? 'Attivo' : 'Inattivo' }}
@@ -134,6 +136,17 @@
               <span class="hint">L'utente potrà vedere le proprie ore e il riepilogo mensile.</span>
             </div>
 
+            <div v-if="form.role === 'referent'" class="field">
+              <label>Collega a referente</label>
+              <select v-model="form.referent_id">
+                <option value="">Nessuno (da assegnare)</option>
+                <option v-for="r in referents" :key="r.id" :value="r.id">
+                  {{ r.first_name }} {{ r.last_name }}
+                </option>
+              </select>
+              <span class="hint">Il referente potrà vedere ore e scadenze dei progetti assegnati.</span>
+            </div>
+
             <div v-if="saveError" class="alert-error">{{ saveError }}</div>
 
             <div class="modal-footer">
@@ -192,13 +205,14 @@ import api from '../services/api.js';
 
 const users         = ref([]);
 const collaborators = ref([]);
+const referents     = ref([]);
 const loading       = ref(true);
 const saving        = ref(false);
 const saveError     = ref('');
 const showPwd       = ref(false);
 
 const modal = reactive({ open: false });
-const form  = reactive({ username: '', email: '', password: '', role: 'collaborator', collaborator_id: '' });
+const form  = reactive({ username: '', email: '', password: '', role: 'collaborator', collaborator_id: '', referent_id: '' });
 const formErrors = reactive({ username: '', email: '', password: '' });
 
 const pwdModal = reactive({ open: false, user: null, password: '', show: false, saving: false, error: '' });
@@ -207,6 +221,12 @@ const pwdModal = reactive({ open: false, user: null, password: '', show: false, 
 function collabName(id) {
   const c = collaborators.value.find(x => x.id == id);
   return c ? `${c.first_name} ${c.last_name}` : null;
+}
+
+function referentName(u) {
+  if (u.referent_first_name) return `${u.referent_first_name} ${u.referent_last_name}`;
+  const r = referents.value.find(x => x.id == u.referent_id);
+  return r ? `${r.first_name} ${r.last_name}` : null;
 }
 
 function formatDate(d) {
@@ -220,7 +240,7 @@ function roleLabel(role) {
 }
 
 function resetForm() {
-  Object.assign(form, { username: '', email: '', password: '', role: 'collaborator', collaborator_id: '' });
+  Object.assign(form, { username: '', email: '', password: '', role: 'collaborator', collaborator_id: '', referent_id: '' });
   Object.assign(formErrors, { username: '', email: '', password: '' });
   saveError.value = '';
   showPwd.value   = false;
@@ -237,9 +257,10 @@ function validate() {
 async function load() {
   loading.value = true;
   try {
-    const [u, c] = await Promise.all([api.get('/users'), api.get('/collaborators')]);
+    const [u, c, r] = await Promise.all([api.get('/users'), api.get('/collaborators'), api.get('/referents')]);
     users.value         = u.data;
     collaborators.value = c.data;
+    referents.value     = r.data.filter(x => x.is_active);
   } finally {
     loading.value = false;
   }
@@ -259,7 +280,8 @@ async function saveUser() {
       email:           form.email,
       password:        form.password,
       role:            form.role,
-      collaborator_id: form.collaborator_id || null,
+      collaborator_id: form.role === 'collaborator' ? (form.collaborator_id || null) : null,
+      referent_id:     form.role === 'referent' ? (form.referent_id || null) : null,
     });
     await load();
     closeModal();
