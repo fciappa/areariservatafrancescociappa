@@ -7,6 +7,7 @@ Backend PHP/Laravel che sostituisce il precedente backend Node.js/Express per la
 ## Documentazione tecnica
 
 - Validazione API centralizzata: `docs/api-validation.md`
+- Smoke test release API: `docs/smoke-release.md`
 
 ### Requisiti
 - PHP 8.1+
