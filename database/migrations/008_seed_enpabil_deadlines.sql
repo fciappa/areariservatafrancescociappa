@@ -30,12 +30,12 @@ BEGIN
         UNION ALL SELECT DATE('2027-01-18'), 'dominio con redirect', 'federnetwork.it', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 11.99
         UNION ALL SELECT DATE('2026-02-05'), 'database', 'Sql519889', 'goldwelfare.org', NULL, NULL, '5.7', NULL, NULL, NULL, NULL, 15.00
         UNION ALL SELECT DATE('2026-04-07'), 'dominio', 'enpabilsalute.org', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 14.99
-        UNION ALL SELECT DATE('2026-07-20'), 'dominio con email', 'cnasp.it $$', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 16.49
+        UNION ALL SELECT DATE('2026-07-20'), 'dominio con email', 'cnasp.it', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 16.49
         UNION ALL SELECT DATE('2026-11-29'), 'hosting basic linux', 'federnetwork.com', NULL, NULL, '5.3', 'NO DB', 'NO WP', NULL, 'SITO HTML SENZA DB', NULL, 56.49
         UNION ALL SELECT DATE('2026-11-29'), 'hosting basic linux', 'federnetwork.it', NULL, NULL, '5.3', 'NO DB', 'NO WP', NULL, 'SITO HTML SENZA DB', NULL, 34.99
         UNION ALL SELECT DATE('2027-01-17'), 'database', 'Sql1606358', 'enpabilsalute.com', NULL, NULL, '5.7', NULL, NULL, NULL, NULL, 15.00
         UNION ALL SELECT DATE('2027-01-18'), 'database + backup', 'Sql1332089', 'enpabil.com / areariservata', NULL, NULL, '5.7', NULL, NULL, NULL, NULL, 15.00
-        UNION ALL SELECT DATE('2027-01-18'), 'hosting basic linux', 'enpabil.com **', NULL, '7.3.33', '5.7', NULL, NULL, NULL, NULL, NULL, 96.98
+        UNION ALL SELECT DATE('2027-01-18'), 'hosting basic linux', 'enpabil.com', NULL, '7.3.33', '5.7', NULL, NULL, NULL, NULL, NULL, 96.98
         UNION ALL SELECT DATE('2027-01-18'), 'Terzo Livello con Hosting Linux', 'areariservata.enpabil.com', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 15.00
         UNION ALL SELECT DATE('2027-01-18'), 'Terzo Livello con Hosting Linux', 'areariservataapi.enpabil.com', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 15.00
         UNION ALL SELECT DATE('2027-01-18'), 'Terzo Livello con Hosting Linux', 'contabilita.enpabil.com', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 15.00
@@ -49,7 +49,7 @@ BEGIN
         UNION ALL SELECT DATE('2027-01-28'), 'hosting basic linux', 'goldwelfare.com', NULL, '7.3', '8.4.12', '5.7', NULL, NULL, NULL, NULL, 34.99
         UNION ALL SELECT DATE('2027-02-02'), 'dominio', 'goldwelfare.it', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 11.99
         UNION ALL SELECT DATE('2027-02-02'), 'dominio', 'goldwelfare.org', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 14.99
-        UNION ALL SELECT DATE('2027-06-04'), 'dominio con email', 'confesercizi.it $$', NULL, NULL, 'NO', 'NO', 'NO', NULL, NULL, NULL, 16.49
+        UNION ALL SELECT DATE('2027-06-04'), 'dominio con email', 'confesercizi.it', NULL, NULL, 'NO', 'NO', 'NO', NULL, NULL, NULL, 16.49
         UNION ALL SELECT DATE('2027-06-07'), 'hosting basic linux', 'confesercizi.org', NULL, '7.13.2', '8.4.12', '5.7', '6.8.2', NULL, NULL, NULL, 32.99
         UNION ALL SELECT DATE('2027-06-29'), 'database', 'Sql1451433', 'confesercizi.org', NULL, NULL, '5.7', NULL, NULL, NULL, NULL, 10.00
         UNION ALL SELECT DATE('2027-04-13'), 'database', 'Sql1929969', 'sanitarieriunite.com', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL
