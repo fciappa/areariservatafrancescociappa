@@ -49,6 +49,40 @@ BEGIN
     END IF;
 
     IF NOT EXISTS (
+        SELECT 1
+        FROM information_schema.KEY_COLUMN_USAGE
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = 'collab_invoices'
+          AND COLUMN_NAME = 'collaborator_id'
+          AND REFERENCED_TABLE_NAME = 'collaborators'
+    ) THEN
+        ALTER TABLE collab_invoices
+            ADD CONSTRAINT fk_ci_collab FOREIGN KEY (collaborator_id) REFERENCES collaborators(id);
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1
+        FROM information_schema.STATISTICS
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = 'collab_invoices'
+          AND INDEX_NAME = 'idx_ci_collaborator_invoice_date'
+    ) THEN
+        ALTER TABLE collab_invoices
+            ADD INDEX idx_ci_collaborator_invoice_date (collaborator_id, invoice_date);
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1
+        FROM information_schema.STATISTICS
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = 'collab_invoices'
+          AND INDEX_NAME = 'idx_ci_status_invoice_date'
+    ) THEN
+        ALTER TABLE collab_invoices
+            ADD INDEX idx_ci_status_invoice_date (status, invoice_date);
+    END IF;
+
+    IF NOT EXISTS (
         SELECT 1 FROM information_schema.TABLES
         WHERE TABLE_SCHEMA = DATABASE()
           AND TABLE_NAME   = 'collab_invoice_items'
@@ -68,6 +102,18 @@ BEGIN
             CONSTRAINT fk_cii_hour FOREIGN KEY (collab_hour_id) REFERENCES collaborator_hours(id) ON DELETE SET NULL,
             CONSTRAINT fk_cii_tariff FOREIGN KEY (tariff_id) REFERENCES tariffs(id)
         );
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1
+        FROM information_schema.KEY_COLUMN_USAGE
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = 'collab_invoice_items'
+          AND COLUMN_NAME = 'collab_invoice_id'
+          AND REFERENCED_TABLE_NAME = 'collab_invoices'
+    ) THEN
+        ALTER TABLE collab_invoice_items
+            ADD CONSTRAINT fk_cii_invoice FOREIGN KEY (collab_invoice_id) REFERENCES collab_invoices(id) ON DELETE CASCADE;
     END IF;
 
     IF NOT EXISTS (
