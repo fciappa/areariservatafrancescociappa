@@ -19,11 +19,33 @@ BEGIN
             tax_amount      DECIMAL(10,2)   NOT NULL DEFAULT 0.00,
             total           DECIMAL(10,2)   NOT NULL DEFAULT 0.00,
             notes           TEXT,
-            status          ENUM('draft','sent','paid') NOT NULL DEFAULT 'draft',
+            status          ENUM('draft','sent','paid','cancelled') NOT NULL DEFAULT 'draft',
+            paid_at         DATE            NULL DEFAULT NULL COMMENT 'Data pagamento indicata dal collaboratore',
             created_at      TIMESTAMP       DEFAULT CURRENT_TIMESTAMP,
             updated_at      TIMESTAMP       DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             CONSTRAINT fk_ci_collab FOREIGN KEY (collaborator_id) REFERENCES collaborators(id)
         );
+    END IF;
+
+    IF EXISTS (
+        SELECT 1 FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME   = 'collab_invoices'
+          AND COLUMN_NAME  = 'status'
+          AND COLUMN_TYPE NOT LIKE '%''cancelled''%'
+    ) THEN
+        ALTER TABLE collab_invoices
+            MODIFY COLUMN status ENUM('draft','sent','paid','cancelled') NOT NULL DEFAULT 'draft';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME   = 'collab_invoices'
+          AND COLUMN_NAME  = 'paid_at'
+    ) THEN
+        ALTER TABLE collab_invoices
+            ADD COLUMN paid_at DATE NULL DEFAULT NULL COMMENT 'Data pagamento indicata dal collaboratore';
     END IF;
 
     IF NOT EXISTS (
@@ -42,8 +64,34 @@ BEGIN
             tax_inclusive     BOOLEAN         NOT NULL DEFAULT FALSE,
             line_total        DECIMAL(10,2)   NOT NULL,
             created_at        TIMESTAMP       DEFAULT CURRENT_TIMESTAMP,
-            CONSTRAINT fk_cii_invoice FOREIGN KEY (collab_invoice_id) REFERENCES collab_invoices(id) ON DELETE CASCADE
+            CONSTRAINT fk_cii_invoice FOREIGN KEY (collab_invoice_id) REFERENCES collab_invoices(id) ON DELETE CASCADE,
+            CONSTRAINT fk_cii_hour FOREIGN KEY (collab_hour_id) REFERENCES collaborator_hours(id) ON DELETE SET NULL,
+            CONSTRAINT fk_cii_tariff FOREIGN KEY (tariff_id) REFERENCES tariffs(id)
         );
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1
+        FROM information_schema.KEY_COLUMN_USAGE
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = 'collab_invoice_items'
+          AND COLUMN_NAME = 'collab_hour_id'
+          AND REFERENCED_TABLE_NAME = 'collaborator_hours'
+    ) THEN
+        ALTER TABLE collab_invoice_items
+            ADD CONSTRAINT fk_cii_hour FOREIGN KEY (collab_hour_id) REFERENCES collaborator_hours(id) ON DELETE SET NULL;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1
+        FROM information_schema.KEY_COLUMN_USAGE
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = 'collab_invoice_items'
+          AND COLUMN_NAME = 'tariff_id'
+          AND REFERENCED_TABLE_NAME = 'tariffs'
+    ) THEN
+        ALTER TABLE collab_invoice_items
+            ADD CONSTRAINT fk_cii_tariff FOREIGN KEY (tariff_id) REFERENCES tariffs(id);
     END IF;
 END$$
 DELIMITER ;
