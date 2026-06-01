@@ -59,8 +59,8 @@ BEGIN
         FROM client_deadlines d
         WHERE d.client_id = v_client_id
           AND d.due_date = x.due_date
-          AND d.item_type = x.item_type
-          AND d.description = x.description
+                    AND TRIM(d.item_type) = TRIM(x.item_type)
+                    AND REPLACE(REPLACE(TRIM(d.description), ' $$', ''), ' **', '') = REPLACE(REPLACE(TRIM(x.description), ' $$', ''), ' **', '')
     );
 END$$
 DELIMITER ;
