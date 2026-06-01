@@ -78,6 +78,28 @@ jobs:
           if-no-files-found: warn
           retention-days: 30
 
+      - name: Build nightly release health dashboard
+        if: always()
+        shell: pwsh
+        run: |
+          pwsh -File scripts/build-release-health.ps1 \
+            -ReportPath "${{ steps.report.outputs.report_path }}" \
+            -OutputPath "storage/logs/release-health-nightly-${{ github.run_id }}.md" \
+            -WorkflowName "Nightly Smoke Staging" \
+            -RunUrl "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            -EventName "${{ github.event_name }}" \
+            -RefName "${{ github.ref_name }}" \
+            -CommitSha "${{ github.sha }}"
+
+      - name: Upload nightly release health dashboard artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-release-health-${{ github.run_id }}
+          path: backend-laravel/storage/logs/release-health-nightly-${{ github.run_id }}.md
+          if-no-files-found: warn
+          retention-days: 30
+
       - name: Append run summary
         if: always()
         shell: bash
@@ -87,5 +109,6 @@ jobs:
             echo ""
             echo "- Base URL: ${{ steps.target.outputs.base_url }}"
             echo "- Report artifact: nightly-smoke-report-${{ github.run_id }}"
+            echo "- Release health artifact: nightly-release-health-${{ github.run_id }}"
             echo "- Report path: backend-laravel/${{ steps.report.outputs.report_path }}"
           } >> "$GITHUB_STEP_SUMMARY"

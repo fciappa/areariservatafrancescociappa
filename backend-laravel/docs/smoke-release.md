@@ -62,6 +62,7 @@ Nel workflow CI backend il report viene pubblicato automaticamente come artifact
 
 - Workflow: `.github/workflows/backend-ci.yml`
 - Artifact: `smoke-report` (file `backend-laravel/storage/logs/smoke-report.md`)
+- Artifact: `release-health-dashboard` (file `backend-laravel/storage/logs/release-health.md`)
 - Pull Request: commento automatico con stato CI e link al run/artifact
 - Pull Request: estratto automatico del report smoke nel commento
 
@@ -72,6 +73,7 @@ Workflow schedulato per smoke su staging:
 - File workflow: `.github/workflows/nightly-smoke-staging.yml`
 - Trigger: ogni notte (`cron`) + avvio manuale (`workflow_dispatch`)
 - Artifact storico: `nightly-smoke-report-<run_id>` con retention 30 giorni
+- Artifact storico dashboard: `nightly-release-health-<run_id>` con retention 30 giorni
 
 Secrets richiesti:
 

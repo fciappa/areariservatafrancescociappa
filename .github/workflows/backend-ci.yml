@@ -65,6 +65,26 @@ jobs:
           path: backend-laravel/storage/logs/smoke-report.md
           if-no-files-found: warn
 
+      - name: Build release health dashboard markdown
+        if: always()
+        run: |
+          pwsh -File scripts/build-release-health.ps1 \
+            -ReportPath "storage/logs/smoke-report.md" \
+            -OutputPath "storage/logs/release-health.md" \
+            -WorkflowName "Backend CI" \
+            -RunUrl "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            -EventName "${{ github.event_name }}" \
+            -RefName "${{ github.ref_name }}" \
+            -CommitSha "${{ github.sha }}"
+
+      - name: Upload release health dashboard artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-health-dashboard
+          path: backend-laravel/storage/logs/release-health.md
+          if-no-files-found: warn
+
       - name: Comment PR with CI and smoke info
         if: always() && github.event_name == 'pull_request'
         uses: actions/github-script@v7
@@ -92,6 +112,7 @@ jobs:
               '',
               '- Workflow: Backend CI',
               '- Artifact: `smoke-report`',
+              '- Artifact: `release-health-dashboard`',
               `- Run details and artifacts: ${runUrl}`,
               '',
               '<details><summary>Estratto smoke report</summary>',
