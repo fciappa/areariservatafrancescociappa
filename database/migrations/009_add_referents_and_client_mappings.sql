@@ -24,7 +24,18 @@ BEGIN
           AND COLUMN_NAME = 'referent_id'
     ) THEN
         ALTER TABLE users
-            ADD COLUMN referent_id INT UNSIGNED NULL AFTER collaborator_id,
+            ADD COLUMN referent_id INT UNSIGNED NULL AFTER collaborator_id;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1
+        FROM information_schema.KEY_COLUMN_USAGE
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = 'users'
+          AND COLUMN_NAME = 'referent_id'
+          AND REFERENCED_TABLE_NAME = 'referents'
+    ) THEN
+        ALTER TABLE users
             ADD CONSTRAINT fk_users_referent
                 FOREIGN KEY (referent_id) REFERENCES referents(id)
                 ON DELETE SET NULL;
@@ -41,13 +52,60 @@ BEGIN
     );
 
     IF NOT EXISTS (
+        SELECT 1
+        FROM information_schema.STATISTICS
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = 'client_referents'
+          AND INDEX_NAME = 'uq_client_referent'
+          AND NON_UNIQUE = 0
+    ) THEN
+        ALTER TABLE client_referents
+            ADD CONSTRAINT uq_client_referent UNIQUE (client_id, user_id);
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1
+        FROM information_schema.KEY_COLUMN_USAGE
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = 'client_referents'
+          AND COLUMN_NAME = 'client_id'
+          AND REFERENCED_TABLE_NAME = 'clients'
+    ) THEN
+        ALTER TABLE client_referents
+            ADD CONSTRAINT fk_cr_client FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1
+        FROM information_schema.KEY_COLUMN_USAGE
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = 'client_referents'
+          AND COLUMN_NAME = 'user_id'
+          AND REFERENCED_TABLE_NAME = 'users'
+    ) THEN
+        ALTER TABLE client_referents
+            ADD CONSTRAINT fk_cr_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
+    END IF;
+
+    IF NOT EXISTS (
         SELECT 1 FROM information_schema.COLUMNS
         WHERE TABLE_SCHEMA = DATABASE()
           AND TABLE_NAME = 'client_deadlines'
           AND COLUMN_NAME = 'project_id'
     ) THEN
         ALTER TABLE client_deadlines
-            ADD COLUMN project_id INT UNSIGNED NULL AFTER client_id,
+            ADD COLUMN project_id INT UNSIGNED NULL AFTER client_id;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1
+        FROM information_schema.KEY_COLUMN_USAGE
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = 'client_deadlines'
+          AND COLUMN_NAME = 'project_id'
+          AND REFERENCED_TABLE_NAME = 'projects'
+    ) THEN
+        ALTER TABLE client_deadlines
             ADD CONSTRAINT fk_cd_project FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE SET NULL;
     END IF;
 
