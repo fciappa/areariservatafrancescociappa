@@ -24,6 +24,7 @@
         <option value="draft">Bozza</option>
         <option value="sent">Inviata</option>
         <option value="paid">Pagata</option>
+        <option value="cancelled">Annullata</option>
       </select>
       <button class="btn-ghost" @click="load">🔄 Aggiorna</button>
     </div>
@@ -89,6 +90,7 @@
                 <option value="draft">Bozza</option>
                 <option value="sent">Inviata</option>
                 <option value="paid">Pagata</option>
+                <option value="cancelled">Annullata</option>
               </select>
             </td>
             <td class="actions">
@@ -180,7 +182,7 @@ const paidCount  = computed(() => filtered.value.filter(i => i.status === 'paid'
 
 function formatAmount(v) { return Number(v ?? 0).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 function formatDate(d) { return new Date(d).toLocaleDateString('it-IT'); }
-function statusLabel(s) { return { draft: 'Bozza', sent: 'Inviata', paid: 'Pagata' }[s] ?? s; }
+function statusLabel(s) { return { draft: 'Bozza', sent: 'Inviata', paid: 'Pagata', cancelled: 'Annullata' }[s] ?? s; }
 
 async function load() {
   loading.value = true;
@@ -248,6 +250,7 @@ onMounted(load);
 .status-select.draft  { background: #f3f4f6; color: #374151; border-color: #d1d5db; }
 .status-select.sent   { background: #fef9c3; color: #854d0e; border-color: #fde047; }
 .status-select.paid   { background: #d1fae5; color: #065f46; border-color: #6ee7b7; }
+.status-select.cancelled { background: #fee2e2; color: #991b1b; border-color: #fca5a5; }
 
 .btn-primary { text-decoration: none; }
 
@@ -265,6 +268,7 @@ onMounted(load);
 .badge.draft  { background: #f3f4f6; color: #6b7280; }
 .badge.sent   { background: #fef9c3; color: #854d0e; }
 .badge.paid   { background: #d1fae5; color: #065f46; }
+.badge.cancelled { background: #fee2e2; color: #991b1b; }
 
 .pill { display: inline-block; padding: 0.1rem 0.4rem; border-radius: 9999px; font-size: 0.68rem; font-weight: 600; }
 .pill.in { background: #d1fae5; color: #065f46; }
