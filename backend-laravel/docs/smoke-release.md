@@ -86,6 +86,13 @@ Avvio manuale:
 - opzionale `base_url` per override URL staging
 - opzionale `skip_auth=true` per saltare controlli auth
 
+## Alert automatici
+
+In caso di failure nel workflow nightly viene creata/aggiornata automaticamente una issue:
+
+- titolo issue: `[Nightly Smoke] Failure on staging`
+- contenuto: link al run e riferimento agli artifact smoke/release-health
+
 ## Exit code
 
 - `0` tutti i check passati

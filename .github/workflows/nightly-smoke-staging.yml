@@ -17,6 +17,7 @@ on:
 
 permissions:
   contents: read
+  issues: write
 
 jobs:
   smoke-staging:
@@ -99,6 +100,52 @@ jobs:
           path: backend-laravel/storage/logs/release-health-nightly-${{ github.run_id }}.md
           if-no-files-found: warn
           retention-days: 30
+
+      - name: Alert on nightly smoke failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const marker = '<!-- nightly-smoke-alert -->';
+            const title = '[Nightly Smoke] Failure on staging';
+            const runUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const body = [
+              marker,
+              '## Nightly smoke failure detected',
+              '',
+              `- Workflow: ${context.workflow}`,
+              `- Run: ${runUrl}`,
+              `- Branch: ${context.ref}`,
+              `- Commit: ${context.sha}`,
+              '',
+              'Verificare artifact `nightly-smoke-report-<run_id>` e `nightly-release-health-<run_id>`.',
+              '',
+              '_Issue aggiornata automaticamente da GitHub Actions._',
+            ].join('\n');
+
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+            });
+
+            const existing = issues.find((i) => i.title === title && i.body && i.body.includes(marker));
+
+            if (existing) {
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existing.number,
+                body,
+              });
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                body,
+              });
+            }
 
       - name: Append run summary
         if: always()
