@@ -77,13 +77,13 @@
               <span class="collab-name">{{ h.first_name }} {{ h.last_name }}</span>
             </td>
             <td class="tariff-cell" data-label="Tariffa">
-              <span class="tariff-name">{{ h.tariff_name }}</span>
-              <span class="tariff-meta">
-                <span :class="['pill', h.tax_inclusive ? 'in' : 'ex']">
-                  {{ h.tax_inclusive ? '4% incl.' : '4% escl.' }}
+              <div class="tariff-row">
+                <span class="tariff-name">{{ h.tariff_name }}</span>
+                <span class="tariff-meta">
+                  <span :class="['pill', h.tax_inclusive ? 'in' : 'ex']">{{ h.tax_inclusive ? '4% incl.' : '4% escl.' }}</span>
+                  <span class="pill rate-pill">{{ h.rate_type === 'daily' ? '📅 giorn.' : '⏱️ oraria' }}</span>
                 </span>
-                <span class="pill rate-pill">{{ h.rate_type === 'daily' ? '📅 giornaliera' : '⏱️ oraria' }}</span>
-              </span>
+              </div>
             </td>
             <td class="mono" data-label="Ore">{{ h.hours }}h</td>
             <td class="mono rate-cell" data-label="€/ora">
@@ -471,7 +471,7 @@ onMounted(load);
 
 .table-wrapper {
   border-radius: 12px;
-  overflow: hidden;
+  overflow-x: auto;
   border: 1px solid #e5e7eb;
 }
 
@@ -483,14 +483,17 @@ onMounted(load);
 
 .data-table th {
   background: #f8fafc;
-  font-size: 0.72rem;
-  letter-spacing: 0.06em;
+  font-size: 0.69rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  color: #64748b;
+  white-space: nowrap;
+  border-bottom: 2px solid #e2e8f0;
 }
 
 .data-table td {
   vertical-align: middle;
-  padding-top: 0.6rem;
-  padding-bottom: 0.6rem;
+  padding: 0.42rem 0.75rem;
 }
 
 .data-table tbody tr {
@@ -502,39 +505,44 @@ onMounted(load);
 }
 
 @media (min-width: 641px) {
-  .data-table th:nth-child(1), .data-table td:nth-child(1) { min-width: 145px; }
-  .data-table th:nth-child(2), .data-table td:nth-child(2) { min-width: 180px; }
-  .data-table th:nth-child(3), .data-table td:nth-child(3) { min-width: 250px; }
-  .data-table th:nth-child(4), .data-table td:nth-child(4) { min-width: 70px; text-align: right; }
-  .data-table th:nth-child(5), .data-table td:nth-child(5) { min-width: 110px; text-align: right; }
-  .data-table th:nth-child(6), .data-table td:nth-child(6) { min-width: 100px; text-align: right; }
-  .data-table th:nth-child(7), .data-table td:nth-child(7) { min-width: 80px; text-align: right; }
-  .data-table th:nth-child(8), .data-table td:nth-child(8) { min-width: 120px; }
-  .data-table th:nth-child(9), .data-table td:nth-child(9) { min-width: 120px; }
+  .data-table { min-width: 820px; }
+  .data-table th:nth-child(1), .data-table td:nth-child(1) { width: 96px; }
+  .data-table th:nth-child(2), .data-table td:nth-child(2) { width: 148px; }
+  .data-table th:nth-child(3), .data-table td:nth-child(3) { width: 192px; }
+  .data-table th:nth-child(4), .data-table td:nth-child(4) { width: 50px;  text-align: right; border-left: 1px solid #e2e8f0; padding-right: 0.75rem; }
+  .data-table th:nth-child(5), .data-table td:nth-child(5) { width: 84px;  text-align: right; }
+  .data-table th:nth-child(6), .data-table td:nth-child(6) { width: 80px;  text-align: right; }
+  .data-table th:nth-child(7), .data-table td:nth-child(7) { width: 64px;  text-align: right; border-right: 1px solid #e2e8f0; }
+  .data-table th:nth-child(9), .data-table td:nth-child(9) { width: 88px;  text-align: center; }
+  .data-table td:nth-child(4),
+  .data-table td:nth-child(5),
+  .data-table td:nth-child(6),
+  .data-table td:nth-child(7) { font-size: 0.82rem; }
 }
 
-.fw { display: flex; align-items: center; gap: 0.5rem; }
-.collab-name { display: inline-block; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.desc { max-width: 180px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #6b7280; font-size: 0.8rem; }
+.fw { display: flex; align-items: center; gap: 0.4rem; }
+.collab-name { display: inline-block; max-width: 118px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.83rem; }
+.desc { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #6b7280; font-size: 0.79rem; }
 
-.avatar { width: 1.75rem; height: 1.75rem; border-radius: 50%; background: #0f3460; color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 0.65rem; font-weight: 700; flex-shrink: 0; }
+.avatar { width: 1.6rem; height: 1.6rem; border-radius: 50%; background: #0f3460; color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 0.62rem; font-weight: 700; flex-shrink: 0; }
 
-.tariff-cell { white-space: normal; }
-.tariff-name { display: block; font-size: 0.82rem; font-weight: 600; color: #1f2937; margin-bottom: 0.24rem; }
-.tariff-meta { display: inline-flex; gap: 0.3rem; flex-wrap: wrap; }
+.tariff-cell { white-space: nowrap; overflow: hidden; }
+.tariff-row { display: flex; align-items: center; gap: 0.35rem; flex-wrap: wrap; }
+.tariff-name { font-size: 0.82rem; font-weight: 600; color: #1f2937; flex-shrink: 0; }
+.tariff-meta { display: inline-flex; gap: 0.25rem; flex-wrap: nowrap; }
 .pill { display: inline-block; padding: 0.14rem 0.45rem; border-radius: 9999px; font-size: 0.67rem; font-weight: 700; margin-top: 0.125rem; }
 .pill.in { background: #d1fae5; color: #065f46; }
 .pill.ex { background: #dbeafe; color: #1e40af; }
 .pill.rate-pill { background: #f3f4f6; color: #374151; margin-top: 0.125rem; }
 .rate-cell { white-space: nowrap; }
-.rate-value { white-space: nowrap; }
-.rate-unit-small { font-size: 0.75rem; color: #9ca3af; margin-left: 0.2rem; }
+.rate-value { white-space: nowrap; font-size: 0.82rem; }
+.rate-unit-small { font-size: 0.7rem; color: #9ca3af; margin-left: 0.1rem; }
 .row-invoiced td { background: #fefce8 !important; }
 .row-pending td  { background: #fff7ed !important; }
 .invoiced-icon   { font-size: 1rem; cursor: default; opacity: 0.85; }
 .pending-badge   { display: inline-block; margin-left: 0.375rem; font-size: 0.67rem; font-weight: 700; background: #fed7aa; color: #9a3412; border-radius: 9999px; padding: 0.14rem 0.45rem; vertical-align: middle; }
-.actions { display: flex; align-items: center; gap: 0.2rem; justify-content: flex-end; }
-.btn-icon { width: 1.8rem; height: 1.8rem; border-radius: 8px; }
+.actions { display: flex; align-items: center; gap: 0.15rem; justify-content: center; }
+.btn-icon { width: 1.7rem; height: 1.7rem; border-radius: 7px; font-size: 0.82rem; }
 .btn-icon.approve:hover:not(:disabled) { background: #d1fae5; }
 .btn-icon.reject:hover:not(:disabled)  { background: #fee2e2; }
 
