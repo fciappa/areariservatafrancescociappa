@@ -60,19 +60,20 @@
         <section class="card">
           <div class="card-header">
             <h3>⏱️ Ore questo mese</h3>
-            <RouterLink to="/my-hours" class="card-link">Gestisci →</RouterLink>
+            <RouterLink to="/collab-hours" class="card-link">Gestisci →</RouterLink>
           </div>
           <div v-if="loading" class="skeleton-list">
             <div v-for="i in 3" :key="i" class="skeleton-row" />
           </div>
+          <div v-else-if="!meCollaborator" class="empty-state">Nessun collaboratore marcato come "Sono io".</div>
           <div v-else-if="!myHoursThisMonth.length" class="empty-state">Nessuna ora registrata.</div>
           <table v-else class="mini-table">
             <thead>
-              <tr><th>Cliente</th><th>Ore</th><th>Tariffa</th></tr>
+              <tr><th>Progetto</th><th>Ore</th><th>Tariffa</th></tr>
             </thead>
             <tbody>
-              <tr v-for="h in myHoursThisMonth" :key="`${h.client_id}-${h.tariff_id}`">
-                <td>{{ h.company_name }}</td>
+              <tr v-for="h in myHoursThisMonth" :key="`${h.project_id || 0}-${h.tariff_id}`">
+                <td>{{ h.project_name || '—' }}</td>
                 <td class="mono">{{ h.total_hours }}h</td>
                 <td class="mono">{{ h.tariff_name }} · {{ rateLabel(h) }}</td>
               </tr>
@@ -183,6 +184,7 @@ const collabInvoices     = ref([]);
 const referentSummary    = ref([]);
 const collaboratorsCount = ref(0);
 const clientsCount       = ref(0);
+const meCollaborator     = ref(null);
 
 const now = new Date();
 const year  = now.getFullYear();
@@ -354,27 +356,34 @@ async function loadAdmin() {
     api.get(`/invoices?year=${year}&month=${month}`),
     api.get('/collaborators'),
     api.get('/clients'),
-    api.get('/hours/my'),
+    api.get('/hours/collaborators'),
   ]);
 
   if (summary.status === 'fulfilled')       invoiceSummary.value    = summary.value.data;
   if (invoices.status === 'fulfilled')      recentInvoices.value    = invoices.value.data.slice(0, 5);
-  if (collaborators.status === 'fulfilled') collaboratorsCount.value = collaborators.value.data.filter(c => c.is_active).length;
+  if (collaborators.status === 'fulfilled') {
+    collaboratorsCount.value = collaborators.value.data.filter(c => c.is_active && !c.is_me).length;
+    meCollaborator.value = collaborators.value.data.find(c => c.is_me) ?? null;
+  }
   if (clients.status === 'fulfilled')       clientsCount.value       = clients.value.data.filter(c => c.is_active).length;
 
-  if (hours.status === 'fulfilled') {
-    // Raggruppa per cliente+tariffa per mantenere la tariffa visualizzata coerente.
+  if (hours.status === 'fulfilled' && meCollaborator.value) {
+    // Raggruppa per progetto+tariffa per il collaboratore marcato come "Sono io".
     const thisMonth = hours.value.data.filter(h => {
+      if (h.collaborator_id != meCollaborator.value.id) return false;
+      if (h.status === 'rejected') return false;
       const d = new Date(h.work_date);
       return d.getFullYear() === year && d.getMonth() + 1 === month;
     });
     const map = {};
     for (const h of thisMonth) {
-      const key = `${h.client_id}-${h.tariff_id}`;
+      const key = `${h.project_id || 0}-${h.tariff_id}`;
       if (!map[key]) map[key] = { ...h, total_hours: 0 };
       map[key].total_hours += parseFloat(h.hours);
     }
     myHoursThisMonth.value = Object.values(map);
+  } else {
+    myHoursThisMonth.value = [];
   }
 }
 

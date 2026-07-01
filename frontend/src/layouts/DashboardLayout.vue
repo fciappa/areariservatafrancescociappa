@@ -45,7 +45,6 @@
           <NavLink to="/tariffs"       icon="💰" label="Tariffario"         @click="sidebarOpen = false" />
 
           <div class="nav-group-label">Ore</div>
-          <NavLink to="/my-hours"      icon="⏱️" label="Le mie ore"         @click="sidebarOpen = false" />
           <NavLink to="/collab-hours"  icon="🕐" label="Ore collaboratori"  @click="sidebarOpen = false" />
 
           <div class="nav-group-label">Fatturazione</div>

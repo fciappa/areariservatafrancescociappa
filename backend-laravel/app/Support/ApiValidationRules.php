@@ -98,6 +98,34 @@ class ApiValidationRules
         ];
     }
 
+    public static function collaboratorStore(): array
+    {
+        return [
+            'first_name'  => ['required', 'string', 'max:100'],
+            'last_name'   => ['required', 'string', 'max:100'],
+            'email'       => ['required', 'email', 'max:255', 'unique:collaborators,email'],
+            'phone'       => ['nullable', 'string', 'max:30'],
+            'fiscal_code' => ['nullable', 'string', 'max:20'],
+            'notes'       => ['nullable', 'string'],
+            'is_active'   => ['nullable', 'boolean'],
+            'is_me'       => ['nullable', 'boolean'],
+        ];
+    }
+
+    public static function collaboratorUpdate(int $id): array
+    {
+        return [
+            'first_name'  => ['required', 'string', 'max:100'],
+            'last_name'   => ['required', 'string', 'max:100'],
+            'email'       => ['required', 'email', 'max:255', Rule::unique('collaborators', 'email')->ignore($id)],
+            'phone'       => ['nullable', 'string', 'max:30'],
+            'fiscal_code' => ['nullable', 'string', 'max:20'],
+            'notes'       => ['nullable', 'string'],
+            'is_active'   => ['nullable', 'boolean'],
+            'is_me'       => ['nullable', 'boolean'],
+        ];
+    }
+
     public static function deadlineStore(): array
     {
         return [
@@ -252,7 +280,7 @@ class ApiValidationRules
             'items.*.tax_inclusive'      => ['nullable', 'boolean'],
             'items.*.line_total'         => ['required', 'numeric', 'min:0'],
             'items.*.work_hour_ids'      => ['nullable', 'array'],
-            'items.*.work_hour_ids.*'    => ['integer', 'exists:my_work_hours,id'],
+            'items.*.work_hour_ids.*'    => ['integer', 'exists:collaborator_hours,id'],
         ];
     }
 

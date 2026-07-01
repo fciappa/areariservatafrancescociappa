@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Support\ApiRequestValidator;
+use App\Support\ApiValidationRules;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -26,29 +28,55 @@ class CollaboratorsController extends Controller
 
     public function store(Request $request)
     {
-        $id = DB::table('collaborators')->insertGetId([
-            'first_name'  => $request->input('first_name'),
-            'last_name'   => $request->input('last_name'),
-            'email'       => $request->input('email'),
-            'phone'       => $request->input('phone'),
-            'fiscal_code' => $request->input('fiscal_code'),
-            'notes'       => $request->input('notes'),
-        ]);
+        $data = ApiRequestValidator::validate($request, ApiValidationRules::collaboratorStore());
+
+        $id = null;
+        DB::transaction(function () use ($data, &$id) {
+            if (!empty($data['is_me'])) {
+                DB::table('collaborators')->update(['is_me' => 0]);
+            }
+
+            $id = DB::table('collaborators')->insertGetId([
+                'first_name'  => $data['first_name'],
+                'last_name'   => $data['last_name'],
+                'email'       => $data['email'],
+                'phone'       => $data['phone'] ?? null,
+                'fiscal_code' => $data['fiscal_code'] ?? null,
+                'notes'       => $data['notes'] ?? null,
+                'is_active'   => array_key_exists('is_active', $data) ? (int) ((bool) $data['is_active']) : 1,
+                'is_me'       => !empty($data['is_me']) ? 1 : 0,
+            ]);
+        });
+
         Log::info('Collaborators: creato', ['id' => $id, 'name' => $request->input('last_name').' '.$request->input('first_name')]);
         return response()->json(['id' => $id], 201);
     }
 
     public function update(Request $request, int $id)
     {
-        DB::table('collaborators')->where('id', $id)->update([
-            'first_name'  => $request->input('first_name'),
-            'last_name'   => $request->input('last_name'),
-            'email'       => $request->input('email'),
-            'phone'       => $request->input('phone'),
-            'fiscal_code' => $request->input('fiscal_code'),
-            'notes'       => $request->input('notes'),
-            'is_active'   => $request->input('is_active', 1),
-        ]);
+        if (!DB::table('collaborators')->where('id', $id)->exists()) {
+            return response()->json(['message' => 'Collaboratore non trovato'], 404);
+        }
+
+        $data = ApiRequestValidator::validate($request, ApiValidationRules::collaboratorUpdate($id));
+
+        DB::transaction(function () use ($data, $id) {
+            if (!empty($data['is_me'])) {
+                DB::table('collaborators')->where('id', '!=', $id)->update(['is_me' => 0]);
+            }
+
+            DB::table('collaborators')->where('id', $id)->update([
+                'first_name'  => $data['first_name'],
+                'last_name'   => $data['last_name'],
+                'email'       => $data['email'],
+                'phone'       => $data['phone'] ?? null,
+                'fiscal_code' => $data['fiscal_code'] ?? null,
+                'notes'       => $data['notes'] ?? null,
+                'is_active'   => array_key_exists('is_active', $data) ? (int) ((bool) $data['is_active']) : 1,
+                'is_me'       => !empty($data['is_me']) ? 1 : 0,
+            ]);
+        });
+
         Log::info('Collaborators: aggiornato', ['id' => $id]);
         return response()->json(['message' => 'Aggiornato']);
     }

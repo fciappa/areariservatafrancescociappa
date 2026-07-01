@@ -15,7 +15,6 @@ const routes = [
       { path: 'projects',       component: () => import('../pages/ProjectsPage.vue'),       meta: { adminOnly: true } },
       { path: 'deadlines',      component: () => import('../pages/DeadlinesPage.vue'),      meta: { adminOnly: true } },
       { path: 'tariffs',        component: () => import('../pages/TariffsPage.vue'),        meta: { adminOnly: true } },
-      { path: 'my-hours',       component: () => import('../pages/MyHoursPage.vue'),        meta: { adminOnly: true } },
       { path: 'collab-hours',   component: () => import('../pages/CollabHoursPage.vue'),    meta: { adminOnly: true } },
       { path: 'invoices',              component: () => import('../pages/InvoicesPage.vue'),          meta: { adminOnly: true } },
       { path: 'invoices/new',          component: () => import('../pages/NewInvoicePage.vue'),       meta: { adminOnly: true } },

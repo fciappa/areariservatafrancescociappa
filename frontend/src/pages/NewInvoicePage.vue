@@ -62,9 +62,9 @@
                 <option value="">Tutti i progetti</option>
                 <option v-for="p in projects" :key="p.id" :value="p.id">{{ p.name }}</option>
               </select>
-              <select v-model="hFilter.client_id" class="sel">
-                <option value="">Tutti i clienti</option>
-                <option v-for="c in clients" :key="c.id" :value="c.id">{{ c.company_name }}</option>
+              <select v-model="hFilter.collaborator_id" class="sel">
+                <option value="">Tutti i collaboratori</option>
+                <option v-for="c in collaborators" :key="c.id" :value="c.id">{{ c.first_name }} {{ c.last_name }}</option>
               </select>
               <input v-model="hFilter.month" type="month" class="sel" />
               <button type="button" class="btn-ghost-sm" @click="loadGroupedHours">🔍 Cerca</button>
@@ -76,12 +76,13 @@
             <div v-else-if="!groupedHours.length" class="hp-empty">Seleziona i filtri e clicca Cerca.</div>
             <table v-else class="hp-table">
               <thead>
-                <tr><th></th><th>Mese</th><th>Progetto</th><th>Tariffa</th><th>Ore</th><th>Tariffa</th><th>Lordo</th></tr>
+                <tr><th></th><th>Mese</th><th>Collaboratore</th><th>Progetto</th><th>Tariffa</th><th>Ore</th><th>Tariffa</th><th>Lordo</th></tr>
               </thead>
               <tbody>
-                <tr v-for="g in groupedHours" :key="`${g.project_id}-${g.tariff_id}-${g.month}`" :class="{ 'hp-row-invoiced': g.invoiced_count > 0 }">
+                <tr v-for="g in groupedHours" :key="`${g.collaborator_id}-${g.project_id}-${g.tariff_id}-${g.month}`" :class="{ 'hp-row-invoiced': g.invoiced_count > 0 }">
                   <td><input type="checkbox" :value="g" v-model="hSelected" /></td>
                   <td class="mono">{{ g.month }}</td>
+                  <td>{{ g.first_name }} {{ g.last_name }}</td>
                   <td>{{ g.project_name || '—' }}</td>
                   <td>{{ g.tariff_name }}<span v-if="g.invoiced_count > 0" class="hp-invoiced-badge" title="Già fatturate">🧾</span></td>
                   <td class="mono">{{ g.total_hours }}h</td>
@@ -220,6 +221,7 @@ const router    = useRouter();
 const clients   = ref([]);
 const tariffs   = ref([]);
 const projects  = ref([]);
+const collaborators = ref([]);
 const saving    = ref(false);
 const saveError = ref('');
 const simulated = ref(false);
@@ -231,7 +233,7 @@ const groupedHoursLoading  = ref(false);
 const groupedHoursError    = ref('');
 const groupedHoursSearched = ref(false);
 const hSelected            = ref([]);
-const hFilter              = reactive({ project_id: '', client_id: '', month: '' });
+const hFilter              = reactive({ project_id: '', collaborator_id: '', month: '' });
 
 const form = reactive({
   invoice_number: '',
@@ -283,9 +285,9 @@ async function loadGroupedHours() {
   try {
     const params = new URLSearchParams();
     if (hFilter.project_id) params.set('project_id', hFilter.project_id);
-    if (hFilter.client_id)  params.set('client_id',  hFilter.client_id);
-    if (hFilter.month)      params.set('month',       hFilter.month);
-    const { data } = await api.get(`/hours/my/grouped?${params}`);
+    if (hFilter.collaborator_id)  params.set('collaborator_id',  hFilter.collaborator_id);
+    if (hFilter.month)            params.set('month',            hFilter.month);
+    const { data } = await api.get(`/hours/collaborators/grouped?${params}`);
     groupedHours.value = data;
     groupedHoursSearched.value = true;
   } catch (err) {
@@ -299,14 +301,15 @@ function addFromHours() {
   for (const g of hSelected.value) {
     const monthLabel = g.month ? ` — ${g.month}` : '';
     const projectLabel = g.project_name ? ` (${g.project_name})` : '';
+    const collaboratorLabel = `${g.first_name} ${g.last_name}`;
     form.items.push({
-      description:   `${g.tariff_name}${projectLabel}${monthLabel}`,
+      description:   `${g.tariff_name} — ${collaboratorLabel}${projectLabel}${monthLabel}`,
       tariff_id:     g.tariff_id,
       hours:         g.total_hours,
       hourly_rate:   effectiveHourlyRate(g),
       tax_inclusive: Boolean(g.tax_inclusive),
       line_total:    0,
-      _work_hour_ids: g.work_hour_ids,
+      _work_hour_ids: g.collab_hour_ids,
     });
   }
   hSelected.value = [];
@@ -391,10 +394,16 @@ async function saveInvoice() {
 
 // ── Fetch ────────────────────────────────────────────────
 onMounted(async () => {
-  const [c, t, p] = await Promise.all([api.get('/clients'), api.get('/tariffs'), api.get('/projects')]);
+  const [c, t, p, collaboratorsResponse] = await Promise.all([
+    api.get('/clients'),
+    api.get('/tariffs'),
+    api.get('/projects'),
+    api.get('/collaborators'),
+  ]);
   clients.value  = c.data.filter(x => x.is_active);
   tariffs.value  = t.data;
   projects.value = p.data.filter(x => x.is_active);
+  collaborators.value = collaboratorsResponse.data.filter(x => x.is_active);
   // Proponi numero fattura automatico
   form.invoice_number = `${new Date().getFullYear()}/001`;
 });

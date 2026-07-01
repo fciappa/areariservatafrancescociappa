@@ -38,6 +38,7 @@ CREATE TABLE IF NOT EXISTS collaborators (
     fiscal_code  VARCHAR(20),
     notes        TEXT,
     is_active    BOOLEAN          NOT NULL DEFAULT TRUE,
+    is_me        BOOLEAN          NOT NULL DEFAULT FALSE,
     created_at   TIMESTAMP        DEFAULT CURRENT_TIMESTAMP,
     updated_at   TIMESTAMP        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
@@ -297,6 +298,7 @@ CREATE TABLE IF NOT EXISTS collaborators (
     fiscal_code  VARCHAR(20),
     notes        TEXT,
     is_active    BOOLEAN          NOT NULL DEFAULT TRUE,
+    is_me        BOOLEAN          NOT NULL DEFAULT FALSE,
     created_at   TIMESTAMP        DEFAULT CURRENT_TIMESTAMP,
     updated_at   TIMESTAMP        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );

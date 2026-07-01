@@ -57,12 +57,11 @@
           <tr>
             <th>Data</th>
             <th>Collaboratore</th>
-            <th>Tariffa</th>
+            <th>Dettagli</th>
             <th>Ore</th>
             <th>€/ora</th>
             <th>Lordo</th>
             <th>4%</th>
-            <th>Descrizione</th>
             <th>Azioni</th>
           </tr>
         </thead>
@@ -81,9 +80,10 @@
                 <span class="tariff-name">{{ h.tariff_name }}</span>
                 <span class="tariff-meta">
                   <span :class="['pill', h.tax_inclusive ? 'in' : 'ex']">{{ h.tax_inclusive ? '4% incl.' : '4% escl.' }}</span>
-                  <span class="pill rate-pill">{{ h.rate_type === 'daily' ? '📅 giorn.' : '⏱️ oraria' }}</span>
+                  <span class="pill rate-pill">{{ h.rate_type === 'daily' ? 'giornaliera' : 'oraria' }}</span>
                 </span>
               </div>
+              <div v-if="h.description" class="tariff-note" :title="h.description">{{ h.description }}</div>
             </td>
             <td class="mono" data-label="Ore">{{ h.hours }}h</td>
             <td class="mono rate-cell" data-label="€/ora">
@@ -92,7 +92,6 @@
             </td>
             <td class="mono green" data-label="Lordo">€ {{ formatAmount(calcGross(h)) }}</td>
             <td class="mono muted" data-label="4%">€ {{ formatAmount(calcTax(h)) }}</td>
-            <td class="desc" data-label="Note">{{ h.description || '—' }}</td>
             <td class="actions">
               <span v-if="h.invoiced_at" class="invoiced-icon" :title="`Fatturata il ${formatDate(h.invoiced_at)}`">🧾</span>
               <template v-if="h.status === 'pending'">
@@ -505,15 +504,15 @@ onMounted(load);
 }
 
 @media (min-width: 641px) {
-  .data-table { min-width: 820px; }
+  .data-table { min-width: 760px; }
   .data-table th:nth-child(1), .data-table td:nth-child(1) { width: 96px; }
-  .data-table th:nth-child(2), .data-table td:nth-child(2) { width: 148px; }
-  .data-table th:nth-child(3), .data-table td:nth-child(3) { width: 192px; }
+  .data-table th:nth-child(2), .data-table td:nth-child(2) { width: 168px; }
+  .data-table th:nth-child(3), .data-table td:nth-child(3) { width: 250px; }
   .data-table th:nth-child(4), .data-table td:nth-child(4) { width: 50px;  text-align: right; border-left: 1px solid #e2e8f0; padding-right: 0.75rem; }
   .data-table th:nth-child(5), .data-table td:nth-child(5) { width: 84px;  text-align: right; }
   .data-table th:nth-child(6), .data-table td:nth-child(6) { width: 80px;  text-align: right; }
   .data-table th:nth-child(7), .data-table td:nth-child(7) { width: 64px;  text-align: right; border-right: 1px solid #e2e8f0; }
-  .data-table th:nth-child(9), .data-table td:nth-child(9) { width: 88px;  text-align: center; }
+  .data-table th:nth-child(8), .data-table td:nth-child(8) { width: 88px; text-align: center; }
   .data-table td:nth-child(4),
   .data-table td:nth-child(5),
   .data-table td:nth-child(6),
@@ -521,15 +520,15 @@ onMounted(load);
 }
 
 .fw { display: flex; align-items: center; gap: 0.4rem; }
-.collab-name { display: inline-block; max-width: 118px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.83rem; }
-.desc { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #6b7280; font-size: 0.79rem; }
+.collab-name { display: inline-block; max-width: 138px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.83rem; }
 
 .avatar { width: 1.6rem; height: 1.6rem; border-radius: 50%; background: #0f3460; color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 0.62rem; font-weight: 700; flex-shrink: 0; }
 
 .tariff-cell { white-space: nowrap; overflow: hidden; }
 .tariff-row { display: flex; align-items: center; gap: 0.35rem; flex-wrap: wrap; }
-.tariff-name { font-size: 0.82rem; font-weight: 600; color: #1f2937; flex-shrink: 0; }
-.tariff-meta { display: inline-flex; gap: 0.25rem; flex-wrap: nowrap; }
+.tariff-name { font-size: 0.82rem; font-weight: 600; color: #1f2937; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tariff-meta { display: inline-flex; gap: 0.25rem; flex-wrap: wrap; }
+.tariff-note { margin-top: 0.2rem; font-size: 0.75rem; color: #6b7280; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pill { display: inline-block; padding: 0.14rem 0.45rem; border-radius: 9999px; font-size: 0.67rem; font-weight: 700; margin-top: 0.125rem; }
 .pill.in { background: #d1fae5; color: #065f46; }
 .pill.ex { background: #dbeafe; color: #1e40af; }
@@ -626,6 +625,7 @@ onMounted(load);
     border-top: 1px solid #f3f4f6;
   }
   .data-table td.actions::before { display: none; }
-  .desc { max-width: none; white-space: normal; }
+  .tariff-cell { white-space: normal; }
+  .tariff-note { white-space: normal; }
 }
 </style>

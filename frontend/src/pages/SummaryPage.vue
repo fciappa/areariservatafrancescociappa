@@ -37,9 +37,9 @@
         </div>
         <div class="kpi-card purple">
           <div class="kpi-icon">📊</div>
-          <div class="kpi-value mono">€ {{ fmt(adminData.invoiced - adminData.collabCost) }}</div>
+          <div class="kpi-value mono">€ {{ fmt(adminData.marginAmount) }}</div>
           <div class="kpi-label">Margine stimato</div>
-          <div class="kpi-sub">fatturato − costo collaboratori</div>
+          <div class="kpi-sub">(ore×tariffa) "Sono io" − (ore×tariffa) altri collaboratori</div>
         </div>
       </div>
 
@@ -48,16 +48,16 @@
         <section class="card">
           <div class="card-header">
             <h3>🧾 Fatture del mese</h3>
-            <RouterLink to="/invoices" class="card-link">Vedi tutte →</RouterLink>
+            <RouterLink to="/collab-invoices" class="card-link">Vedi tutte →</RouterLink>
           </div>
           <div v-if="loading" class="skeleton-list"><div v-for="i in 3" :key="i" class="skeleton-row" /></div>
           <div v-else-if="!adminData.invoices.length" class="empty-small">Nessuna fattura questo mese.</div>
           <table v-else class="mini-table">
-            <thead><tr><th>N°</th><th>Cliente</th><th>Totale</th><th>Stato</th></tr></thead>
+            <thead><tr><th>N°</th><th>Collaboratore</th><th>Totale</th><th>Stato</th></tr></thead>
             <tbody>
               <tr v-for="inv in adminData.invoices" :key="inv.id">
                 <td class="mono">{{ inv.invoice_number }}</td>
-                <td>{{ inv.company_name }}</td>
+                <td>{{ inv.collaborator_name || `${inv.last_name} ${inv.first_name}` }}</td>
                 <td class="mono green">€ {{ fmt(inv.total) }}</td>
                 <td><span :class="['badge', inv.status]">{{ statusLabel(inv.status) }}</span></td>
               </tr>
@@ -77,7 +77,10 @@
             <thead><tr><th>Collaboratore</th><th>Ore</th><th>Da pagare</th></tr></thead>
             <tbody>
               <tr v-for="c in adminData.collabSummary" :key="c.collaborator_id">
-                <td class="fw">{{ c.first_name }} {{ c.last_name }}</td>
+                <td class="fw">
+                  {{ c.first_name }} {{ c.last_name }}
+                  <span v-if="c.is_me" title="Collaboratore impostato come Sono io">⭐</span>
+                </td>
                 <td class="mono">{{ c.total_hours }}h</td>
                 <td class="mono green">€ {{ fmt(c.total_cost) }}</td>
               </tr>
@@ -196,7 +199,8 @@ const monthLabel = computed(() => {
 // ── Admin data ────────────────────────────────────────────
 const adminData = reactive({
   invoiced: 0, invoiceCount: 0, myHours: 0, collabHours: 0,
-  collabCost: 0, invoices: [], collabSummary: [],
+  collabCost: 0, myAmount: 0, otherCollabCost: 0, marginAmount: 0,
+  invoices: [], collabSummary: [],
 });
 const monthlySummary = ref([]);
 
@@ -213,7 +217,7 @@ const collabData = reactive({
 function fmt(v)      { return Number(v ?? 0).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 function fmtShort(v) { return Number(v ?? 0) >= 1000 ? (Number(v)/1000).toFixed(1) + 'k' : fmt(v); }
 function formatDate(d) { return new Date(d).toLocaleDateString('it-IT'); }
-function statusLabel(s) { return { draft: 'Bozza', issued: 'Emessa', paid: 'Pagata' }[s] ?? s; }
+function statusLabel(s) { return { draft: 'Bozza', sent: 'Inviata', paid: 'Pagata', cancelled: 'Annullata' }[s] ?? s; }
 function monthName(m)  { return monthNames[parseInt(m) - 1]; }
 function monthShort(m) { return monthShorts[parseInt(m) - 1]; }
 
@@ -233,43 +237,98 @@ function barHeight(v) { return Math.max(10, (parseFloat(v) / maxInvoiced.value) 
 
 // ── Fetch ────────────────────────────────────────────────
 async function loadAdmin() {
-  const [year, month] = selectedMonth.value.split('-');
+  const selectedYm = selectedMonth.value;
 
-  const [invoices, myHours, collabHours, summary] = await Promise.allSettled([
-    api.get(`/invoices?year=${year}&month=${month}`),
-    api.get('/hours/my'),
+  const [collabInvoices, collabHours, collaborators] = await Promise.allSettled([
+    api.get('/collab-invoices'),
     api.get('/hours/collaborators'),
-    api.get('/invoices/summary/monthly'),
+    api.get('/collaborators'),
   ]);
 
-  if (invoices.status === 'fulfilled') {
-    adminData.invoices      = invoices.value.data;
-    adminData.invoiced      = invoices.value.data.filter(i => i.status !== 'draft').reduce((s, i) => s + parseFloat(i.total), 0);
-    adminData.invoiceCount  = invoices.value.data.filter(i => i.status !== 'draft').length;
+  let meCollaboratorId = null;
+  if (collaborators.status === 'fulfilled') {
+    const meCollaborator = collaborators.value.data.find(c => c.is_me);
+    meCollaboratorId = meCollaborator?.id ?? null;
   }
 
-  if (myHours.status === 'fulfilled') {
-    const filtered = myHours.value.data.filter(h => h.work_date.slice(0, 7) === selectedMonth.value);
-    adminData.myHours = filtered.reduce((s, h) => s + parseFloat(h.hours), 0);
+  if (collabInvoices.status === 'fulfilled') {
+    const allInvoices = collabInvoices.value.data;
+    const monthInvoices = allInvoices.filter(i => String(i.invoice_date).slice(0, 7) === selectedYm);
+    adminData.invoices = monthInvoices;
+
+    const meMonthInvoices = meCollaboratorId == null
+      ? []
+      : monthInvoices.filter(i => i.collaborator_id == meCollaboratorId);
+    const meMonthEmitted = meMonthInvoices.filter(i => i.status !== 'draft');
+
+    adminData.invoiced = meMonthEmitted.reduce((s, i) => s + parseFloat(i.total), 0);
+    adminData.invoiceCount = meMonthEmitted.length;
+
+    const meAllEmitted = meCollaboratorId == null
+      ? []
+      : allInvoices.filter(i => i.collaborator_id == meCollaboratorId && i.status !== 'draft');
+    const monthMap = {};
+    for (const inv of meAllEmitted) {
+      const ym = String(inv.invoice_date).slice(0, 7);
+      if (!monthMap[ym]) {
+        const [y, m] = ym.split('-');
+        monthMap[ym] = { year: Number(y), month: Number(m), total_invoiced: 0 };
+      }
+      monthMap[ym].total_invoiced += parseFloat(inv.total);
+    }
+    monthlySummary.value = Object.values(monthMap)
+      .sort((a, b) => (a.year - b.year) || (a.month - b.month))
+      .slice(-12);
+  } else {
+    adminData.invoices = [];
+    adminData.invoiced = 0;
+    adminData.invoiceCount = 0;
+    monthlySummary.value = [];
   }
 
   if (collabHours.status === 'fulfilled') {
     const filtered = collabHours.value.data.filter(h => h.work_date.slice(0, 7) === selectedMonth.value);
-    adminData.collabHours = filtered.reduce((s, h) => s + parseFloat(h.hours), 0);
-    adminData.collabCost  = filtered.reduce((s, h) => s + calcGross(h), 0);
+
+    const myHoursRows = meCollaboratorId == null
+      ? []
+      : filtered.filter(h => h.collaborator_id == meCollaboratorId);
+    const othersHoursRows = meCollaboratorId == null
+      ? filtered
+      : filtered.filter(h => h.collaborator_id != meCollaboratorId);
+
+    adminData.collabHours = othersHoursRows.reduce((s, h) => s + parseFloat(h.hours), 0);
+    adminData.collabCost  = othersHoursRows.reduce((s, h) => s + calcGross(h), 0);
+
+    adminData.myHours = myHoursRows.reduce((s, h) => s + parseFloat(h.hours), 0);
+    adminData.myAmount = myHoursRows.reduce((s, h) => s + calcGross(h), 0);
+    adminData.otherCollabCost = othersHoursRows.reduce((s, h) => s + calcGross(h), 0);
+    adminData.marginAmount = adminData.myAmount - adminData.otherCollabCost;
 
     // Raggruppa per collaboratore
     const map = {};
     for (const h of filtered) {
-      if (!map[h.collaborator_id]) map[h.collaborator_id] = { collaborator_id: h.collaborator_id, first_name: h.first_name, last_name: h.last_name, total_hours: 0, total_cost: 0 };
+      if (!map[h.collaborator_id]) {
+        map[h.collaborator_id] = {
+          collaborator_id: h.collaborator_id,
+          first_name: h.first_name,
+          last_name: h.last_name,
+          is_me: meCollaboratorId != null && h.collaborator_id == meCollaboratorId,
+          total_hours: 0,
+          total_cost: 0,
+        };
+      }
       map[h.collaborator_id].total_hours += parseFloat(h.hours);
       map[h.collaborator_id].total_cost  += calcGross(h);
     }
     adminData.collabSummary = Object.values(map);
-  }
-
-  if (summary.status === 'fulfilled') {
-    monthlySummary.value = summary.value.data.slice(0, 12).reverse();
+  } else {
+    adminData.collabHours = 0;
+    adminData.collabCost = 0;
+    adminData.myHours = 0;
+    adminData.myAmount = 0;
+    adminData.otherCollabCost = 0;
+    adminData.marginAmount = 0;
+    adminData.collabSummary = [];
   }
 }
 

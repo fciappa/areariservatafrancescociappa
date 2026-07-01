@@ -43,6 +43,7 @@
             <th>Email</th>
             <th>Telefono</th>
             <th>Cod. Fiscale</th>
+            <th>Io</th>
             <th>Stato</th>
             <th>Azioni</th>
           </tr>
@@ -60,6 +61,10 @@
             <td>{{ c.email }}</td>
             <td>{{ c.phone || '—' }}</td>
             <td class="mono">{{ c.fiscal_code || '—' }}</td>
+            <td>
+              <span v-if="c.is_me" class="badge me">Sono io</span>
+              <span v-else>—</span>
+            </td>
             <td>
               <span :class="['badge', c.is_active ? 'active' : 'inactive']">
                 {{ c.is_active ? 'Attivo' : 'Inattivo' }}
@@ -123,6 +128,11 @@
               <textarea v-model="form.notes" rows="3" placeholder="Note aggiuntive…" />
             </div>
 
+            <div class="field field-inline">
+              <label>Sono io</label>
+              <input v-model="form.is_me" type="checkbox" />
+            </div>
+
             <div v-if="!modal.isNew" class="field field-inline">
               <label>Attivo</label>
               <input v-model="form.is_active" type="checkbox" />
@@ -157,7 +167,7 @@ const saving        = ref(false);
 const saveError     = ref('');
 
 const modal = reactive({ open: false, isNew: true });
-const form  = reactive({ first_name: '', last_name: '', email: '', phone: '', fiscal_code: '', notes: '', is_active: true });
+const form  = reactive({ first_name: '', last_name: '', email: '', phone: '', fiscal_code: '', notes: '', is_active: true, is_me: false });
 const formErrors = reactive({ first_name: '', last_name: '', email: '' });
 
 // ── Computed ─────────────────────────────────────────────
@@ -180,7 +190,7 @@ function initials(c) {
 }
 
 function resetForm() {
-  Object.assign(form, { first_name: '', last_name: '', email: '', phone: '', fiscal_code: '', notes: '', is_active: true });
+  Object.assign(form, { first_name: '', last_name: '', email: '', phone: '', fiscal_code: '', notes: '', is_active: true, is_me: false });
   Object.assign(formErrors, { first_name: '', last_name: '', email: '' });
   saveError.value = '';
 }
@@ -223,6 +233,7 @@ function openEdit(c) {
     fiscal_code: c.fiscal_code ?? '',
     notes:       c.notes       ?? '',
     is_active:   Boolean(c.is_active),
+    is_me:       Boolean(c.is_me),
   });
   modal.isNew = false;
   modal.open  = true;
@@ -336,5 +347,10 @@ onMounted(load);
   width: 1rem;
   height: 1rem;
   cursor: pointer;
+}
+
+.badge.me {
+  background: #dbeafe;
+  color: #1d4ed8;
 }
 </style>

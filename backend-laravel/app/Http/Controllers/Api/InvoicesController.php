@@ -137,7 +137,7 @@ class InvoicesController extends Controller
             }
 
             if ($allWorkHourIds) {
-                DB::table('my_work_hours')
+                DB::table('collaborator_hours')
                     ->whereIn('id', $allWorkHourIds)
                     ->update(['invoiced_at' => now()]);
             }
