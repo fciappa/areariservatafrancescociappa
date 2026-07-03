@@ -26,6 +26,8 @@
       </div>
     </div>
 
+    <div v-if="pageError" class="alert-error page-alert">{{ pageError }}</div>
+
     <div v-if="loading" class="skeleton-list">
       <div v-for="i in 5" :key="i" class="skeleton-row" />
     </div>
@@ -48,8 +50,7 @@
             <th>Azioni</th>
           </tr>
         </thead>
-        <tbody>
-          <template v-for="d in filtered" :key="d.id">
+        <tbody v-for="d in filtered" :key="d.id">
             <tr>
               <td class="mono">{{ formatDate(d.due_date) }}</td>
               <td class="fw compact-cell" :title="d.company_name">{{ d.company_name }}</td>
@@ -63,9 +64,10 @@
                 </button>
                 <button class="btn-icon" title="Rinnova data +1 anno" @click="renewDate(d)">🔁</button>
                 <button class="btn-icon" title="Modifica scadenza" @click="openEdit(d)">✏️</button>
+                <button class="btn-icon" title="Elimina scadenza" @click="remove(d)">🗑️</button>
               </td>
             </tr>
-            <tr v-if="isExpanded(d.id)" class="detail-row" :key="`detail-${d.id}`">
+            <tr v-if="isExpanded(d.id)" class="detail-row">
               <td colspan="7">
                 <div class="tech-grid">
                   <div class="tech-item"><span class="tech-label">Progetto</span><span class="tech-value">{{ d.project_name || '—' }}</span></div>
@@ -78,7 +80,6 @@
                 </div>
               </td>
             </tr>
-          </template>
         </tbody>
       </table>
     </div>
@@ -220,6 +221,7 @@ const projects = ref([]);
 const loading = ref(true);
 const saving = ref(false);
 const saveError = ref('');
+const pageError = ref('');
 const search = ref('');
 const selectedClientId = ref('');
 const sortKey = ref(sortPreference.key);
@@ -467,13 +469,30 @@ async function renewDate(deadline) {
   if (!confirm(`Rinnovare la scadenza di ${deadline.description} portandola a +1 anno?`)) return;
 
   saving.value = true;
-  saveError.value = '';
+  pageError.value = '';
 
   try {
     await api.put(`/deadlines/${deadline.id}/renew`);
     await load();
   } catch (err) {
-    saveError.value = err.response?.data?.message ?? 'Errore durante il rinnovo della data.';
+    pageError.value = err.response?.data?.message ?? 'Errore durante il rinnovo della data.';
+  } finally {
+    saving.value = false;
+  }
+}
+
+async function remove(deadline) {
+  if (!confirm(`Eliminare la scadenza "${deadline.description}" del ${formatDate(deadline.due_date)}?`)) return;
+
+  saving.value = true;
+  pageError.value = '';
+
+  try {
+    await api.delete(`/deadlines/${deadline.id}`);
+    expandedIds.value = expandedIds.value.filter((id) => id !== deadline.id);
+    await load();
+  } catch (err) {
+    pageError.value = err.response?.data?.message ?? 'Errore durante l\'eliminazione della scadenza.';
   } finally {
     saving.value = false;
   }
@@ -522,6 +541,10 @@ onMounted(load);
 .search-input {
   flex: 1;
   min-width: 250px;
+}
+
+.page-alert {
+  margin-bottom: 1rem;
 }
 
 .client-select {

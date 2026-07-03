@@ -5,12 +5,47 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Support\ApiRequestValidator;
 use App\Support\ApiValidationRules;
+use Carbon\Carbon;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class DeadlinesController extends Controller
 {
+    private function hasDeadlineConflict(int $clientId, string $dueDate, string $itemType, string $description, ?int $ignoreId = null): bool
+    {
+        $query = DB::table('client_deadlines')
+            ->where('client_id', $clientId)
+            ->where('due_date', $dueDate)
+            ->where('item_type', trim($itemType))
+            ->where('description', trim($description));
+
+        if ($ignoreId !== null) {
+            $query->where('id', '<>', $ignoreId);
+        }
+
+        return $query->exists();
+    }
+
+    private function deadlineConflictResponse(): \Illuminate\Http\JsonResponse
+    {
+        return response()->json([
+            'message' => 'Esiste gia una scadenza con stesso cliente, data, tipo e descrizione.',
+            'error' => 'deadline_conflict',
+        ], 409);
+    }
+
+    private function isUniqueConstraintViolation(QueryException $exception): bool
+    {
+        $sqlState = (string) ($exception->errorInfo[0] ?? $exception->getCode());
+        if (in_array($sqlState, ['23000', '23505', '19'], true)) {
+            return true;
+        }
+
+        return str_contains(strtolower($exception->getMessage()), 'unique');
+    }
+
     public function index(Request $request)
     {
         $sortMap = [
@@ -67,6 +102,8 @@ class DeadlinesController extends Controller
     {
         $data = ApiRequestValidator::validate($request, ApiValidationRules::deadlineStore());
         $clientId = (int) $data['client_id'];
+        $itemType = trim((string) $data['item_type']);
+        $description = trim((string) $data['description']);
 
         $projectId = $data['project_id'] ?? null;
         if ($projectId) {
@@ -76,23 +113,35 @@ class DeadlinesController extends Controller
             }
         }
 
-        $id = DB::table('client_deadlines')->insertGetId([
-            'client_id'      => $clientId,
-            'project_id'     => $projectId ?: null,
-            'due_date'       => $data['due_date'],
-            'item_type'      => $data['item_type'],
-            'description'    => $data['description'],
-            'linked_to'      => $data['linked_to'] ?? null,
-            'avada_version'  => $data['avada_version'] ?? null,
-            'php_version'    => $data['php_version'] ?? null,
-            'mysql_version'  => $data['mysql_version'] ?? null,
-            'wp_version'     => $data['wp_version'] ?? null,
-            'test_email'     => $data['test_email'] ?? null,
-            'line_ref'       => $data['line_ref'] ?? null,
-            'notes'          => $data['notes'] ?? null,
-            'amount'         => $data['amount'] ?? null,
-            'is_active'      => $data['is_active'] ?? 1,
-        ]);
+        if ($this->hasDeadlineConflict($clientId, $data['due_date'], $itemType, $description)) {
+            return $this->deadlineConflictResponse();
+        }
+
+        try {
+            $id = DB::table('client_deadlines')->insertGetId([
+                'client_id'      => $clientId,
+                'project_id'     => $projectId ?: null,
+                'due_date'       => $data['due_date'],
+                'item_type'      => $itemType,
+                'description'    => $description,
+                'linked_to'      => $data['linked_to'] ?? null,
+                'avada_version'  => $data['avada_version'] ?? null,
+                'php_version'    => $data['php_version'] ?? null,
+                'mysql_version'  => $data['mysql_version'] ?? null,
+                'wp_version'     => $data['wp_version'] ?? null,
+                'test_email'     => $data['test_email'] ?? null,
+                'line_ref'       => $data['line_ref'] ?? null,
+                'notes'          => $data['notes'] ?? null,
+                'amount'         => $data['amount'] ?? null,
+                'is_active'      => $data['is_active'] ?? 1,
+            ]);
+        } catch (QueryException $exception) {
+            if ($this->isUniqueConstraintViolation($exception)) {
+                return $this->deadlineConflictResponse();
+            }
+
+            throw $exception;
+        }
 
         Log::info('Deadlines: creata', ['id' => $id, 'client_id' => $clientId]);
 
@@ -116,6 +165,8 @@ class DeadlinesController extends Controller
         }
         $data = ApiRequestValidator::validate($request, ApiValidationRules::deadlineUpdate());
         $clientId = (int) $data['client_id'];
+        $itemType = trim((string) $data['item_type']);
+        $description = trim((string) $data['description']);
 
         $projectId = $data['project_id'] ?? null;
         if ($projectId) {
@@ -125,23 +176,35 @@ class DeadlinesController extends Controller
             }
         }
 
-        DB::table('client_deadlines')->where('id', $id)->update([
-            'client_id'      => $clientId,
-            'project_id'     => $projectId ?: null,
-            'due_date'       => $data['due_date'],
-            'item_type'      => $data['item_type'],
-            'description'    => $data['description'],
-            'linked_to'      => $data['linked_to'] ?? null,
-            'avada_version'  => $data['avada_version'] ?? null,
-            'php_version'    => $data['php_version'] ?? null,
-            'mysql_version'  => $data['mysql_version'] ?? null,
-            'wp_version'     => $data['wp_version'] ?? null,
-            'test_email'     => $data['test_email'] ?? null,
-            'line_ref'       => $data['line_ref'] ?? null,
-            'notes'          => $data['notes'] ?? null,
-            'amount'         => $data['amount'] ?? null,
-            'is_active'      => $data['is_active'] ?? 1,
-        ]);
+        if ($this->hasDeadlineConflict($clientId, $data['due_date'], $itemType, $description, $id)) {
+            return $this->deadlineConflictResponse();
+        }
+
+        try {
+            DB::table('client_deadlines')->where('id', $id)->update([
+                'client_id'      => $clientId,
+                'project_id'     => $projectId ?: null,
+                'due_date'       => $data['due_date'],
+                'item_type'      => $itemType,
+                'description'    => $description,
+                'linked_to'      => $data['linked_to'] ?? null,
+                'avada_version'  => $data['avada_version'] ?? null,
+                'php_version'    => $data['php_version'] ?? null,
+                'mysql_version'  => $data['mysql_version'] ?? null,
+                'wp_version'     => $data['wp_version'] ?? null,
+                'test_email'     => $data['test_email'] ?? null,
+                'line_ref'       => $data['line_ref'] ?? null,
+                'notes'          => $data['notes'] ?? null,
+                'amount'         => $data['amount'] ?? null,
+                'is_active'      => $data['is_active'] ?? 1,
+            ]);
+        } catch (QueryException $exception) {
+            if ($this->isUniqueConstraintViolation($exception)) {
+                return $this->deadlineConflictResponse();
+            }
+
+            throw $exception;
+        }
 
         Log::info('Deadlines: aggiornata', ['id' => $id, 'client_id' => $clientId]);
 
@@ -159,14 +222,45 @@ class DeadlinesController extends Controller
 
     public function renew(int $id)
     {
-        $rows = DB::select('SELECT id, due_date FROM client_deadlines WHERE id = ? LIMIT 1', [$id]);
+        $rows = DB::select('SELECT id, client_id, due_date, item_type, description FROM client_deadlines WHERE id = ? LIMIT 1', [$id]);
         if (empty($rows)) {
             return response()->json(['message' => 'Scadenza non trovata'], 404);
         }
 
-        DB::update('UPDATE client_deadlines SET due_date = DATE_ADD(due_date, INTERVAL 1 YEAR) WHERE id = ?', [$id]);
+        if (empty($rows[0]->due_date)) {
+            return response()->json(['message' => 'Data scadenza non valida o mancante'], 422);
+        }
 
-        Log::info('Deadlines: rinnovata di un anno', ['id' => $id, 'old_due_date' => $rows[0]->due_date]);
+        $currentDueDate = Carbon::parse((string) $rows[0]->due_date);
+        $newDueDate = $currentDueDate->copy()->addYearNoOverflow()->format('Y-m-d');
+
+        if ($this->hasDeadlineConflict(
+            (int) $rows[0]->client_id,
+            $newDueDate,
+            (string) $rows[0]->item_type,
+            (string) $rows[0]->description,
+            $id
+        )) {
+            return $this->deadlineConflictResponse();
+        }
+
+        try {
+            DB::table('client_deadlines')->where('id', $id)->update([
+                'due_date' => $newDueDate,
+            ]);
+        } catch (QueryException $exception) {
+            if ($this->isUniqueConstraintViolation($exception)) {
+                return $this->deadlineConflictResponse();
+            }
+
+            throw $exception;
+        }
+
+        Log::info('Deadlines: rinnovata di un anno', [
+            'id' => $id,
+            'old_due_date' => $rows[0]->due_date,
+            'new_due_date' => $newDueDate,
+        ]);
 
         $updated = DB::select('
             SELECT d.*, c.company_name, p.name AS project_name
@@ -178,5 +272,25 @@ class DeadlinesController extends Controller
         ', [$id]);
 
         return response()->json($updated[0]);
+    }
+
+    public function destroy(int $id)
+    {
+        $rows = DB::select('SELECT id, description, due_date FROM client_deadlines WHERE id = ? LIMIT 1', [$id]);
+        if (empty($rows)) {
+            return response()->json(['message' => 'Scadenza non trovata'], 404);
+        }
+
+        DB::table('client_deadlines')->where('id', $id)->delete();
+
+        Log::info('Deadlines: eliminata', [
+            'id' => $id,
+            'description' => $rows[0]->description,
+            'due_date' => $rows[0]->due_date,
+        ]);
+
+        return response()->json([
+            'message' => 'Scadenza eliminata correttamente.',
+        ]);
     }
 }

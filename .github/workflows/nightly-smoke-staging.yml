@@ -83,14 +83,17 @@ jobs:
         if: always()
         shell: pwsh
         run: |
-          pwsh -File scripts/build-release-health.ps1 \
-            -ReportPath "${{ steps.report.outputs.report_path }}" \
-            -OutputPath "storage/logs/release-health-nightly-${{ github.run_id }}.md" \
-            -WorkflowName "Nightly Smoke Staging" \
-            -RunUrl "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
-            -EventName "${{ github.event_name }}" \
-            -RefName "${{ github.ref_name }}" \
-            -CommitSha "${{ github.sha }}"
+          $params = @{
+            ReportPath = "${{ steps.report.outputs.report_path }}"
+            OutputPath = "storage/logs/release-health-nightly-${{ github.run_id }}.md"
+            WorkflowName = "Nightly Smoke Staging"
+            RunUrl = "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            EventName = "${{ github.event_name }}"
+            RefName = "${{ github.ref_name }}"
+            CommitSha = "${{ github.sha }}"
+          }
+
+          pwsh -File scripts/build-release-health.ps1 @params
 
       - name: Upload nightly release health dashboard artifact
         if: always()

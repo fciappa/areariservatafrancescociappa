@@ -143,5 +143,6 @@ Route::middleware('auth.jwt')->group(function () {
         Route::post('/deadlines', [DeadlinesController::class, 'store']);
         Route::put('/deadlines/{id}', [DeadlinesController::class, 'update']);
         Route::put('/deadlines/{id}/renew', [DeadlinesController::class, 'renew']);
+        Route::delete('/deadlines/{id}', [DeadlinesController::class, 'destroy']);
     });
 });

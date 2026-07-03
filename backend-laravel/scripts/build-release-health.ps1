@@ -13,7 +13,11 @@ $ErrorActionPreference = "Stop"
 function SafeReadLines {
     param([string]$Path)
 
-    if (-not (Test-Path $Path)) {
+    if ([string]::IsNullOrWhiteSpace($Path)) {
+        return @()
+    }
+
+    if (-not (Test-Path -Path $Path -PathType Leaf)) {
         return @()
     }
 
