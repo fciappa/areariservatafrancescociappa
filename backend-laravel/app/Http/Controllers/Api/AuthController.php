@@ -37,6 +37,7 @@ class AuthController extends Controller
 
     public function login(Request $request)
     {
+        // login
         $data = ApiRequestValidator::validate($request, ApiValidationRules::authLogin());
         $username = $data['username'];
         $password = $data['password'];
