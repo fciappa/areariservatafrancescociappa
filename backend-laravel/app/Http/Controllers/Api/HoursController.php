@@ -207,7 +207,17 @@ class HoursController extends Controller
             $sql .= ' WHERE ' . implode(' AND ', $where);
         }
 
-        $sql .= ' GROUP BY mwh.client_id, mwh.project_id, mwh.tariff_id, DATE_FORMAT(mwh.work_date, \'%Y-%m\')
+        $sql .= ' GROUP BY
+                mwh.client_id,
+                cl.company_name,
+                mwh.project_id,
+                p.name,
+                mwh.tariff_id,
+                t.name,
+                t.hourly_rate,
+                t.rate_type,
+                t.tax_inclusive,
+                DATE_FORMAT(mwh.work_date, \'%Y-%m\')
                   ORDER BY month DESC, project_name, tariff_name';
 
         $rows = DB::select($sql, $params);
@@ -265,7 +275,18 @@ class HoursController extends Controller
             $sql .= ' WHERE ' . implode(' AND ', $where);
         }
 
-        $sql .= ' GROUP BY ch.collaborator_id, ch.project_id, ch.tariff_id, DATE_FORMAT(ch.work_date, \'%Y-%m\')
+        $sql .= ' GROUP BY
+                ch.collaborator_id,
+                c.first_name,
+                c.last_name,
+                ch.project_id,
+                p.name,
+                ch.tariff_id,
+                t.name,
+                t.hourly_rate,
+                t.rate_type,
+                t.tax_inclusive,
+                DATE_FORMAT(ch.work_date, \'%Y-%m\')
                   ORDER BY month DESC, last_name, first_name, project_name';
 
         $rows = DB::select($sql, $params);
