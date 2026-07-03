@@ -58,33 +58,13 @@ Il report contiene:
 
 ## Artifact in GitHub Actions
 
-Nel workflow CI backend il report viene pubblicato automaticamente come artifact `smoke-report`.
+I workflow automatici backend CI/nightly smoke sono stati rimossi dal repository.
 
-- Workflow: `.github/workflows/backend-ci.yml`
-- Artifact: `smoke-report` (file `backend-laravel/storage/logs/smoke-report.md`)
-- Artifact: `release-health-dashboard` (file `backend-laravel/storage/logs/release-health.md`)
-- Pull Request: commento automatico con stato CI e link al run/artifact
-- Pull Request: estratto automatico del report smoke nel commento
+Per ora lo smoke report resta disponibile come esecuzione manuale locale/scriptata:
 
-## Nightly Staging Smoke
-
-Workflow schedulato per smoke su staging:
-
-- File workflow: `.github/workflows/nightly-smoke-staging.yml`
-- Trigger: ogni notte (`cron`) + avvio manuale (`workflow_dispatch`)
-- Artifact storico: `nightly-smoke-report-<run_id>` con retention 30 giorni
-- Artifact storico dashboard: `nightly-release-health-<run_id>` con retention 30 giorni
-
-Secrets richiesti:
-
-- `STAGING_BASE_URL` (URL base API staging)
-- `SMOKE_USER` (utente per auth checks)
-- `SMOKE_PASS` (password per auth checks)
-
-Avvio manuale:
-
-- opzionale `base_url` per override URL staging
-- opzionale `skip_auth=true` per saltare controlli auth
+- Script: `backend-laravel/scripts/smoke-api.ps1`
+- Output: `backend-laravel/storage/logs/smoke-report.md`
+- Dashboard: `backend-laravel/scripts/build-release-health.ps1`
 
 ## Alert automatici
 

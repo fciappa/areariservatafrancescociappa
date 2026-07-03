@@ -1,6 +1,6 @@
 # Area Riservata – Laravel API Backend
 
-[![Backend CI](https://github.com/fciappa/areariservatafrancescociappa/actions/workflows/backend-ci.yml/badge.svg?branch=release/areariservata)](https://github.com/fciappa/areariservatafrancescociappa/actions/workflows/backend-ci.yml)
+[![Deploy](https://github.com/fciappa/areariservatafrancescociappa/actions/workflows/deploy.yml/badge.svg?branch=release/areariservata)](https://github.com/fciappa/areariservatafrancescociappa/actions/workflows/deploy.yml)
 
 Backend PHP/Laravel che sostituisce il precedente backend Node.js/Express per la compatibilità con Hostinger shared hosting.
 
@@ -11,12 +11,11 @@ Backend PHP/Laravel che sostituisce il precedente backend Node.js/Express per la
 - Validazione API centralizzata: `docs/api-validation.md`
 - Smoke test release API: `docs/smoke-release.md`
 
-## CI
+## CI/CD
 
-- Workflow GitHub Actions: `.github/workflows/backend-ci.yml`
-- Esegue i test backend (`phpunit`) ad ogni push e pull request
-- Link workflow: https://github.com/fciappa/areariservatafrancescociappa/actions/workflows/backend-ci.yml
-- Link run su branch release (artifact `smoke-report`): https://github.com/fciappa/areariservatafrancescociappa/actions/workflows/backend-ci.yml?query=branch%3Arelease%2Fareariservata
+- Workflow GitHub Actions: `.github/workflows/deploy.yml`
+- Trigger deploy: push su `release/areariservata` oppure avvio manuale (`workflow_dispatch`)
+- Link workflow: https://github.com/fciappa/areariservatafrancescociappa/actions/workflows/deploy.yml
 
 ### Requisiti
 - PHP 8.1+
