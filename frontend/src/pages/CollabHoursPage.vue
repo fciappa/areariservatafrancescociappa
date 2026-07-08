@@ -23,8 +23,14 @@
         <option value="">Tutti i progetti</option>
         <option v-for="p in projects" :key="p.id" :value="p.id">{{ p.name }}</option>
       </select>
-      <input v-model="filterMonth" type="month" class="select-input" />
-      <button v-if="filterCollab || filterProject || filterMonth" class="btn-ghost" @click="clearFilters">✕ Pulisci</button>
+      <select v-model="filterMonth" class="select-input">
+        <option value="">Tutti i mesi</option>
+        <option v-for="m in monthOptions" :key="m.value" :value="m.value">{{ m.label }}</option>
+      </select>
+      <select v-model="filterYear" class="select-input">
+        <option v-for="y in yearOptions" :key="y" :value="String(y)">{{ y }}</option>
+      </select>
+      <button v-if="hasActiveFilters" class="btn-ghost" @click="clearFilters">✕ Pulisci</button>
     </div>
 
     <!-- Riepilogo -->
@@ -34,7 +40,11 @@
         <span class="summary-value">{{ totalHours }}h</span>
       </div>
       <div class="summary-item">
-        <span class="summary-label">Da pagare (lordo)</span>
+        <span class="summary-label">Giorni lavorativi (8h)</span>
+        <span class="summary-value">{{ formatWorkDays(totalWorkDays) }} gg</span>
+      </div>
+      <div class="summary-item">
+        <span class="summary-label">Da pagare (tasse incluse)</span>
         <span class="summary-value green">€ {{ formatAmount(totalGross) }}</span>
       </div>
     </div>
@@ -245,6 +255,8 @@ const saveError     = ref('');
 const filterCollab  = ref('');
 const filterProject = ref('');
 const filterMonth   = ref('');
+const defaultFilterYear = String(getDefaultFilterYear());
+const filterYear    = ref(defaultFilterYear);
 const tariffResolved = ref(false);
 
 const actioning = reactive({});
@@ -263,9 +275,35 @@ const filtered = computed(() =>
   hours.value.filter(h => {
     if (filterCollab.value   && h.collaborator_id != filterCollab.value)  return false;
     if (filterProject.value  && h.project_id       != filterProject.value) return false;
-    if (filterMonth.value    && !h.work_date.slice(0, 7).startsWith(filterMonth.value)) return false;
+    if (filterYear.value     && !h.work_date.startsWith(`${filterYear.value}-`)) return false;
+    if (filterMonth.value    && h.work_date.slice(5, 7) !== filterMonth.value) return false;
     return true;
   })
+);
+
+const monthOptions = [
+  { value: '01', label: 'Gennaio' },
+  { value: '02', label: 'Febbraio' },
+  { value: '03', label: 'Marzo' },
+  { value: '04', label: 'Aprile' },
+  { value: '05', label: 'Maggio' },
+  { value: '06', label: 'Giugno' },
+  { value: '07', label: 'Luglio' },
+  { value: '08', label: 'Agosto' },
+  { value: '09', label: 'Settembre' },
+  { value: '10', label: 'Ottobre' },
+  { value: '11', label: 'Novembre' },
+  { value: '12', label: 'Dicembre' },
+];
+
+const yearOptions = computed(() => {
+  const years = new Set(hours.value.map(h => Number(h.work_date?.slice(0, 4))).filter(Boolean));
+  years.add(Number(defaultFilterYear));
+  return Array.from(years).sort((a, b) => b - a);
+});
+
+const hasActiveFilters = computed(() =>
+  Boolean(filterCollab.value || filterProject.value || filterMonth.value || filterYear.value !== defaultFilterYear)
 );
 
 const selectedTariff = computed(() => tariffs.value.find(t => t.id == form.tariff_id) ?? null);
@@ -280,6 +318,7 @@ const modalPreview = computed(() => {
 });
 
 const totalHours = computed(() => filtered.value.reduce((s, h) => s + parseFloat(h.hours), 0));
+const totalWorkDays = computed(() => totalHours.value / 8);
 const totalGross = computed(() => filtered.value.reduce((s, h) => s + calcGross(h), 0));
 
 const selectedDates = computed(() => {
@@ -297,8 +336,14 @@ const selectedDates = computed(() => {
 });
 
 function today() { return new Date().toISOString().slice(0, 10); }
+function getDefaultFilterYear() {
+  const now = new Date();
+  const year = now.getFullYear();
+  return now.getMonth() === 0 ? year - 1 : year;
+}
 function fmt(v)  { return Number(v).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 function formatAmount(v) { return fmt(v); }
+function formatWorkDays(v) { return Number(v).toLocaleString('it-IT', { minimumFractionDigits: 0, maximumFractionDigits: 2 }); }
 function formatDate(d) { return new Date(d).toLocaleDateString('it-IT'); }
 function initials(h) { return ((h.first_name?.[0] ?? '') + (h.last_name?.[0] ?? '')).toUpperCase(); }
 function calcGross(h) {
@@ -306,7 +351,12 @@ function calcGross(h) {
   return effective * parseFloat(h.hours);
 }
 function calcTax(h)   { const g = calcGross(h); return h.tax_inclusive ? g - g / 1.04 : g * 0.04; }
-function clearFilters() { filterCollab.value = ''; filterProject.value = ''; filterMonth.value = ''; }
+function clearFilters() {
+  filterCollab.value = '';
+  filterProject.value = '';
+  filterMonth.value = '';
+  filterYear.value = defaultFilterYear;
+}
 
 function resetForm() {
   Object.assign(form, { work_date: today(), hours: '', collaborator_id: '', project_id: '', tariff_id: '', description: '' });
