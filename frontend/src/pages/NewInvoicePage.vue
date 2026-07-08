@@ -180,7 +180,7 @@
           <div class="preview-lines">
             <div v-for="(ci, i) in computed_items" :key="i" class="preview-line">
               <span class="preview-line-desc">{{ form.items[i].description || `Riga ${i+1}` }}</span>
-              <span class="mono">€ {{ fmt(ci.gross) }}</span>
+              <span class="mono">€ {{ fmt(previewLineAmount(form.items[i], ci)) }}</span>
             </div>
           </div>
 
@@ -276,6 +276,9 @@ function fmt(v) { return Number(v ?? 0).toLocaleString('it-IT', { minimumFractio
 function recompute() { simulated.value = false; }
 function effectiveHourlyRate(g) { return g.rate_type === 'daily' ? g.hourly_rate / 8 : g.hourly_rate; }
 function grossFromHours(g) { return effectiveHourlyRate(g) * g.total_hours; }
+function previewLineAmount(item, ci) {
+  return item?.tax_inclusive ? ci.imponibile : ci.gross;
+}
 
 async function loadGroupedHours() {
   groupedHoursLoading.value  = true;
