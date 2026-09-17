@@ -21,6 +21,7 @@ const routes = [
       { path: 'collab-invoices',       component: () => import('../pages/CollabInvoicesPage.vue'),   meta: { adminOnly: true } },
       { path: 'collab-invoices/new',   component: () => import('../pages/NewCollabInvoicePage.vue'), meta: { adminOnly: true } },
       { path: 'users',component: () => import('../pages/UsersPage.vue'),          meta: { adminOnly: true } },
+      { path: 'files',              component: () => import('../pages/FilesPage.vue'),          meta: { adminOnly: true } },
       { path: 'summary',        component: () => import('../pages/SummaryPage.vue'),        meta: { roles: ['admin', 'collaborator'] } },
       { path: 'collab-my-hours', component: () => import('../pages/CollabMyHoursPage.vue'), meta: { roles: ['collaborator'] } },
       { path: 'my-invoices',     component: () => import('../pages/MyInvoicesPage.vue'),     meta: { roles: ['collaborator'] } },

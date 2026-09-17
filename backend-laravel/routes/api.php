@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\ReferentController;
 use App\Http\Controllers\Api\ReferentsController;
 use App\Http\Controllers\Api\UsersController;
 use App\Http\Controllers\Api\DeadlinesController;
+use App\Http\Controllers\Api\FilesController;
 use Illuminate\Support\Facades\Route;
 
 // ── Auth (public) ─────────────────────────────────────────
@@ -144,5 +145,11 @@ Route::middleware('auth.jwt')->group(function () {
         Route::put('/deadlines/{id}', [DeadlinesController::class, 'update']);
         Route::put('/deadlines/{id}/renew', [DeadlinesController::class, 'renew']);
         Route::delete('/deadlines/{id}', [DeadlinesController::class, 'destroy']);
+    });
+
+    // Files (admin only) - stored and listed directly from the filesystem
+    Route::middleware('admin')->group(function () {
+        Route::get('/files', [FilesController::class, 'index']);
+        Route::post('/files', [FilesController::class, 'store']);
     });
 });

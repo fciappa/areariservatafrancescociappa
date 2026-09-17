@@ -51,6 +51,9 @@
           <NavLink to="/invoices"        icon="🧾" label="Fatture clienti"        @click="sidebarOpen = false" />
           <NavLink to="/collab-invoices" icon="📄" label="Fatture collaboratori"  @click="sidebarOpen = false" />
           <NavLink to="/users"         icon="👤" label="Utenti"             @click="sidebarOpen = false" />
+
+          <div class="nav-group-label">Documenti</div>
+          <NavLink to="/files"         icon="📎" label="File caricati"      @click="sidebarOpen = false" />
         </template>
       </nav>
 
