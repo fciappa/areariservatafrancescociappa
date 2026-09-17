@@ -41,8 +41,10 @@ class FilesController extends Controller
         $directory = storage_path('app/' . self::UPLOAD_DIRECTORY);
         File::ensureDirectoryExists($directory);
 
-        $extension = $uploadedFile->getClientOriginalExtension();
-        $filename = Str::uuid() . ($extension !== '' ? '.' . $extension : '');
+        $originalName = pathinfo($uploadedFile->getClientOriginalName(), PATHINFO_FILENAME);
+        $baseName = Str::slug($originalName) ?: 'file';
+        $extension = Str::lower($uploadedFile->getClientOriginalExtension());
+        $filename = Str::limit($baseName, 180, '') . '-' . bin2hex(random_bytes(6)) . ($extension !== '' ? '.' . $extension : '');
         $uploadedFile->move($directory, $filename);
 
         return response()->json([
@@ -50,5 +52,37 @@ class FilesController extends Controller
             'size' => File::size($directory . DIRECTORY_SEPARATOR . $filename),
             'uploaded_at' => now()->toAtomString(),
         ], 201);
+    }
+
+    public function download(string $filename)
+    {
+        $path = $this->filePath($filename);
+
+        if ($path === null || !File::isFile($path)) {
+            return response()->json(['message' => 'File non trovato'], 404);
+        }
+
+        return response()->download($path, $filename);
+    }
+
+    public function destroy(string $filename)
+    {
+        $path = $this->filePath($filename);
+
+        if ($path === null || !File::isFile($path)) {
+            return response()->json(['message' => 'File non trovato'], 404);
+        }
+
+        File::delete($path);
+        return response()->json(['message' => 'File eliminato']);
+    }
+
+    private function filePath(string $filename): ?string
+    {
+        if ($filename !== basename($filename)) {
+            return null;
+        }
+
+        return storage_path('app/' . self::UPLOAD_DIRECTORY . DIRECTORY_SEPARATOR . $filename);
     }
 }

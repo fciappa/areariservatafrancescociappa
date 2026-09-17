@@ -151,5 +151,7 @@ Route::middleware('auth.jwt')->group(function () {
     Route::middleware('admin')->group(function () {
         Route::get('/files', [FilesController::class, 'index']);
         Route::post('/files', [FilesController::class, 'store']);
+        Route::get('/files/{filename}', [FilesController::class, 'download']);
+        Route::delete('/files/{filename}', [FilesController::class, 'destroy']);
     });
 });
